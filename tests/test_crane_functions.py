@@ -7,7 +7,7 @@ import numpy as np
 from scipy.stats import norm
 
 # Local Imports
-from metworkpy.rank_entropy.crane_functions import (
+from gnatpy.crane_functions import (
     crane_gene_set_entropy,
     crane_gene_set_classification,
     CraneClassifier,
@@ -16,7 +16,7 @@ from metworkpy.rank_entropy.crane_functions import (
     _rank_grouping_score,
     _rank_centroid,
 )
-from metworkpy.rank_entropy import _datagen, crane_functions
+from gnatpy import _datagen, crane_functions
 
 
 class TestCraneHelperFunctions(unittest.TestCase):

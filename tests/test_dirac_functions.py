@@ -6,10 +6,10 @@ import unittest
 import numpy as np
 from scipy.stats import norm
 
-from metworkpy import dirac_gene_set_classification, DiracClassifier
+from gnatpy import dirac_gene_set_classification, DiracClassifier
 
 # Local Imports
-from metworkpy.rank_entropy import dirac_functions, _datagen
+from gnatpy import dirac_functions, _datagen
 
 
 class TestRankFunctions(unittest.TestCase):

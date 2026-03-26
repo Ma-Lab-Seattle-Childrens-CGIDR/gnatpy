@@ -13,7 +13,7 @@ import pandas as pd
 from scipy.stats import gaussian_kde, kendalltau
 
 # Local Imports
-from metworkpy.rank_entropy._bootstrap_pvalue import (
+from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
 
@@ -26,9 +26,7 @@ def race_gene_set_entropy(
     sample_group2,
     gene_network,
     kernel_density_estimate: bool = True,
-    bw_method: Optional[
-        Union[str | float | Callable[[gaussian_kde], float]]
-    ] = None,
+    bw_method: Optional[Union[str | float | Callable[[gaussian_kde], float]]] = None,
     iterations: int = 1_000,
     replace: bool = True,
     seed: Optional[int] = None,
@@ -106,9 +104,7 @@ def _rank_correlation_mean(input_array: NDArray[int | float]) -> float:
     sum = 0.0
     count = 0
     for a, b in combinations(range(input_array.shape[0]), 2):
-        sum += (
-            (kendalltau(input_array[a], input_array[b]).statistic * -1) + 1
-        ) / 2
+        sum += ((kendalltau(input_array[a], input_array[b]).statistic * -1) + 1) / 2
         count += 1
     return sum / count
 

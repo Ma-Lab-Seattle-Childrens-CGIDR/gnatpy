@@ -3,12 +3,24 @@ name = "gnatpy"
 version = "0.1.0"
 description = "Analyze Rank Entropy in Python"
 readme = "README.md"
-authors = [
-    { name = "Braden Griebel", email = "bgriebel@uw.edu" }
+authors = [{ name = "Braden Griebel", email = "bgriebel@uw.edu" }]
+requires-python = ">=3.9"
+dependencies = [
+  "joblib>=1.4.2",
+  "numpy>=2.0.0",
+  "pandas>=2.2.0",
+  "scipy>=1.12.0",
 ]
-requires-python = ">=3.10"
-dependencies = []
 
 [build-system]
 requires = ["uv_build>=0.10.11,<0.11.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0.2",
+  "ruff>=0.15.7",
+  "tox>=4.50.3",
+  "tox-uv>=1.33.4",
+  "ty>=0.0.26",
+]

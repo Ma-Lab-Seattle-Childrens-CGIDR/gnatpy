@@ -1,7 +1,7 @@
 from importlib.metadata import version
 
 __author__ = "Braden Griebel"
-__version__ = version("metworkpy")
+__version__ = version("gnatpy")
 __all__ = [
     "crane_gene_set_entropy",
     "crane_gene_set_classification",

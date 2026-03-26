@@ -6,12 +6,12 @@ import numpy as np
 from scipy.stats import norm
 
 # Local Imports
-from metworkpy.rank_entropy.race_functions import (
+from gnatpy.race_functions import (
     _rank_correlation_mean,
     _race_differential_entropy,
     race_gene_set_entropy,
 )
-from metworkpy.rank_entropy import _datagen
+from gnatpy import _datagen
 
 
 class TestRaceHelperFunctions(unittest.TestCase):

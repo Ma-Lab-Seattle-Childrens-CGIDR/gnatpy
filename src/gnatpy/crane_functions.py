@@ -12,24 +12,23 @@ import pandas as pd
 from scipy.stats import rankdata, gaussian_kde
 
 # Local imports
-from metworkpy.rank_entropy._bootstrap_pvalue import (
+from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
-from metworkpy.rank_entropy.rank_entropy_exceptions import NotFitError
+from gnatpy.gnatpy_exceptions import NotFitError
+from gnatpy.gnatpy_types import Array1D, Array2D
 
 
 # region Main Fuctions
 
 
 def crane_gene_set_classification(
-    expression_data: NDArray[float | int] | pd.DataFrame,
+    expression_data: Array2D | pd.DataFrame,
     sample_group1,
     sample_group2,
     gene_network,
     kernel_density_estimate: bool = True,
-    bw_method: Optional[
-        Union[str | float | Callable[[gaussian_kde], float]]
-    ] = None,
+    bw_method: Optional[Union[str | float | Callable[[gaussian_kde], float]]] = None,
     iterations: int = 10_000,
     replace: bool = True,
     seed: Optional[int] = None,
@@ -100,18 +99,16 @@ def crane_gene_set_classification(
 
 
 def crane_gene_set_entropy(
-    expression_data: NDArray[float | int] | pd.DataFrame,
+    expression_data: Array2D | pd.DataFrame,
     sample_group1,
     sample_group2,
     gene_network,
     kernel_density_estimate: bool = True,
-    bw_method: Optional[
-        Union[str | float | Callable[[gaussian_kde], float]]
-    ] = None,
+    bw_method: Optional[Union[str | float | Callable[[gaussian_kde], float]]] = None,
     iterations: int = 1_000,
     replace: bool = True,
     seed: Optional[int] = None,
-    processes=1,
+    processes=-1,
 ) -> Tuple[float, float]:
     """Calculate the difference in centroid rank entropy, and it's significance
 
@@ -153,8 +150,9 @@ def crane_gene_set_entropy(
     seed : int
         Seed to use for the random number generation during
         bootstrapping
-    processes : int
-        Number of processes to use during the bootstrapping, default 1
+    processes : int, optional
+        Number of processes to use during the bootstrapping, defaults to
+        all available processes
 
     Returns
     -------
@@ -197,19 +195,19 @@ class CraneClassifier:
 
     def fit(
         self,
-        X: NDArray[float | int] | pd.DataFrame,
-        y: NDArray[float | int] | pd.DataFrame | pd.Series,
+        X: Array2D | pd.DataFrame,
+        y: Array1D | pd.DataFrame | pd.Series,
     ) -> CraneClassifier:
         """Fit the classifier
 
         Parameters
         ----------
-        X : NDArray[float|int]|pd.DataFrame
+        X : Array2D or pd.DataFrame
             Features array, should be a pandas DataFrame or numpy
             ndarray with columns representing genes in a gene network,
             and rows representing different samples, and values
             corresponding to expression level
-        y : NDArray[float|int]|pd.DataFrame|pd.Series
+        y : Array2D or pd.DataFrame or pd.Series
             Target array, should be a pandas Series or numpy ndarray,
             with length equal to the number of rows in X. Each entry
             should represent the class of the corresponding sample in X.
@@ -218,8 +216,8 @@ class CraneClassifier:
 
         Returns
         -------
-        DiracClassifier
-            Fitted DIRAC classifier object
+        CraneClassifier
+            Fitted CRANE classifier object
 
         Notes
         -----
@@ -247,7 +245,7 @@ class CraneClassifier:
             )
 
         # Reshape y to be 1D for easier indexing
-        y = y.reshape(-1)
+        y = y.ravel()
 
         for c in classes:
             # get all the rows corresponding to this class
@@ -259,14 +257,12 @@ class CraneClassifier:
         self.num_labels = len(classes)
         return self
 
-    def classify(
-        self, X: NDArray[float | int] | pd.DataFrame
-    ) -> Union[pd.Series, NDArray]:
+    def classify(self, X: Array2D | pd.DataFrame) -> Union[pd.Series, NDArray]:
         """Use the fitted classifier to classify samples
 
         Parameters
         ----------
-        X : NDArray[float|int]|pd.DataFrame
+        X : Array2D or pd.DataFrame
             Features array, should be a pandas DataFrame or numpy
             ndarray with columns representing genes in a gene network,
             and rows representing different samples, and values
@@ -292,7 +288,7 @@ class CraneClassifier:
                 f"X must be either a pandas DataFrame or a numpy ndarray, received {type(X)}"
             )
 
-    def _classify_arr(self, X: NDArray[float | int]) -> NDArray:
+    def _classify_arr(self, X: Array2D) -> NDArray:
         class_array = np.zeros((X.shape[0], self.num_labels), dtype=float)
         rank_array = _rank_array(X)
         for idx, centroid in enumerate(self.rank_centroids):
@@ -308,7 +304,7 @@ class CraneClassifier:
 
 
 def _rank_array(
-    in_array: NDArray[int | float],
+    in_array: Array2D,
     method: Literal[
         "average",
         "min",
@@ -316,7 +312,7 @@ def _rank_array(
         "dense",
         "ordinal",
     ] = "average",
-) -> NDArray[float]:
+) -> Array2D:
     return rankdata(in_array, method=method, axis=1, nan_policy="omit")
 
 
@@ -327,14 +323,12 @@ def _rank_centroid(in_array: [int | float]) -> NDArray[int]:
 def _rank_grouping_score(in_array: [int | float]) -> NDArray[int]:
     ranked_array = _rank_array(in_array)
     centroid = ranked_array.mean(axis=0)
-    return np.sqrt(
-        np.square(np.subtract(ranked_array, centroid)).sum(axis=1)
-    ).mean()
+    return np.sqrt(np.square(np.subtract(ranked_array, centroid)).sum(axis=1)).mean()
 
 
 def _crane_differential_entropy(
-    a: NDArray[int | float],
-    b: NDArray[int | float],
+    a: Array2D,
+    b: Array2D,
 ) -> float:
     return np.abs(_rank_grouping_score(a) - _rank_grouping_score(b))
 
@@ -344,9 +338,7 @@ def _crane_differential_entropy(
 # region Classification rate functions
 
 
-def _crane_classification_rate(
-    a: NDArray[float | int], b: NDArray[float | int]
-) -> float:
+def _crane_classification_rate(a: Array2D, b: Array2D) -> float:
     # Compute the rank arrays
     rank_array_a = _rank_array(a)
     rank_array_b = _rank_array(b)

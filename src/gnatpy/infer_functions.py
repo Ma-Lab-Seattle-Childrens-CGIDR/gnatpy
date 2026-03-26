@@ -12,7 +12,7 @@ import pandas as pd
 from scipy.stats import gaussian_kde, rankdata
 
 # Local Imports
-from metworkpy.rank_entropy._bootstrap_pvalue import (
+from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
 
@@ -24,9 +24,7 @@ def infer_gene_set_entropy(
     sample_group2,
     gene_network,
     kernel_density_estimate: bool = True,
-    bw_method: Optional[
-        Union[str | float | Callable[[gaussian_kde], float]]
-    ] = None,
+    bw_method: Optional[Union[str | float | Callable[[gaussian_kde], float]]] = None,
     iterations: int = 1_000,
     replace: bool = True,
     seed: Optional[int] = None,
@@ -116,9 +114,7 @@ def _vector_entropy(in_vec: NDArray[float | int]) -> float:
 
 
 def _rank_array_entropy(in_array: NDArray[float | int]) -> float:
-    rank_array = rankdata(
-        in_array, method="average", nan_policy="omit", axis=1
-    )
+    rank_array = rankdata(in_array, method="average", nan_policy="omit", axis=1)
     return np.apply_along_axis(_vector_entropy, axis=0, arr=rank_array).mean()
 
 

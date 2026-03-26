@@ -12,10 +12,10 @@ import pandas as pd
 from scipy.stats import gaussian_kde
 
 # Local Imports
-from metworkpy.rank_entropy._bootstrap_pvalue import (
+from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
-from metworkpy.rank_entropy.rank_entropy_exceptions import NotFitError
+from gnatpy.gnatpy_exceptions import NotFitError
 
 
 # region Main Functions
@@ -27,9 +27,7 @@ def dirac_gene_set_classification(
     sample_group2,
     gene_network,
     kernel_density_estimate: bool = True,
-    bw_method: Optional[
-        Union[str | float | Callable[[gaussian_kde], float]]
-    ] = None,
+    bw_method: Optional[Union[str | float | Callable[[gaussian_kde], float]]] = None,
     iterations: int = 10_000,
     replace: bool = True,
     seed: Optional[int] = None,
@@ -105,9 +103,7 @@ def dirac_gene_set_entropy(
     sample_group2,
     gene_network,
     kernel_density_estimate: bool = True,
-    bw_method: Optional[
-        Union[str | float | Callable[[gaussian_kde], float]]
-    ] = None,
+    bw_method: Optional[Union[str | float | Callable[[gaussian_kde], float]]] = None,
     iterations: int = 1_000,
     replace: bool = True,
     seed: Optional[int] = None,
@@ -310,17 +306,13 @@ def _rank_array(in_array: NDArray[int | float]) -> NDArray[int]:
 
 def _rank_template(in_array: NDArray[int | float]) -> NDArray[int]:
     return (
-        np.greater(_rank_array(in_array).mean(axis=0), 0.5)
-        .astype(int)
-        .reshape(1, -1)
+        np.greater(_rank_array(in_array).mean(axis=0), 0.5).astype(int).reshape(1, -1)
     )
 
 
 def _rank_matching_scores(in_array: NDArray[int | float]) -> NDArray[float]:
     rank_array = _rank_array(in_array)
-    rank_template = (
-        np.greater(rank_array.mean(axis=0), 0.5).astype(int).reshape(1, -1)
-    )
+    rank_template = np.greater(rank_array.mean(axis=0), 0.5).astype(int).reshape(1, -1)
     return np.equal(rank_array, rank_template).mean(axis=1)
 
 
@@ -346,12 +338,8 @@ def _dirac_classification_rate(
     rank_array_a = _rank_array(a)
     rank_array_b = _rank_array(b)
 
-    rank_template_a = (
-        (rank_array_a.mean(axis=0) > 0.5).astype(int).reshape(1, -1)
-    )
-    rank_template_b = (
-        (rank_array_b.mean(axis=0) > 0.5).astype(int).reshape(1, -1)
-    )
+    rank_template_a = (rank_array_a.mean(axis=0) > 0.5).astype(int).reshape(1, -1)
+    rank_template_b = (rank_array_b.mean(axis=0) > 0.5).astype(int).reshape(1, -1)
 
     # Compute the Rank matching score for each array, for each phenotype
     rank_matching_score_array_a_phenotype_a = (
@@ -380,9 +368,7 @@ def _dirac_classification_rate(
 
     # Calculate the accuracy
     total_samples = a.shape[0] + b.shape[0]
-    correct_samples = (rank_difference_a > 0.0).sum() + (
-        rank_difference_b <= 0.0
-    ).sum()
+    correct_samples = (rank_difference_a > 0.0).sum() + (rank_difference_b <= 0.0).sum()
 
     return correct_samples / total_samples
 

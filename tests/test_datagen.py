@@ -7,7 +7,7 @@ import numpy as np
 from scipy.stats import norm, expon, nbinom, geom, beta, rankdata
 
 # Local Imports
-from metworkpy.rank_entropy._datagen import (
+from gnatpy._datagen import (
     _unordered_array,
     _ordered_array,
     _ordered_vector,
