@@ -27,9 +27,7 @@ class TestRankFunctions(unittest.TestCase):
         self.assertTrue(
             np.all(
                 np.equal(
-                    dirac_functions._rank_vector(
-                        np.arange(10, dtype=int)[::-1]
-                    ),
+                    dirac_functions._rank_vector(np.arange(10, dtype=int)[::-1]),
                     np.zeros(math.comb(10, 2), dtype=int),
                 )
             )
@@ -115,8 +113,8 @@ class TestRankFunctions(unittest.TestCase):
         expected_rank_conservation_index = np.array(
             [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.7, 0.2]
         ).mean()
-        actual_rank_conservation_index = (
-            dirac_functions._rank_conservation_index(test_array)
+        actual_rank_conservation_index = dirac_functions._rank_conservation_index(
+            test_array
         )
         self.assertAlmostEqual(
             actual_rank_conservation_index, expected_rank_conservation_index
@@ -315,29 +313,25 @@ class TestDiracClassification(unittest.TestCase):
         cls.num_samples_g1 = 20
         cls.num_samples_g2 = 15
         # Generate test data with good ability to classify
-        (test_expression_data1, _, _, _, _) = (
-            _datagen._generate_rank_entropy_data(
-                n_ordered_samples=cls.num_samples_g1,
-                n_unordered_samples=0,
-                n_genes_ordered=cls.num_genes,
-                n_genes_unordered=0,
-                dist=norm(loc=100, scale=25),
-                shuffle_genes=True,
-                shuffle_samples=True,
-                seed=314,
-            )
+        (test_expression_data1, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=cls.num_samples_g1,
+            n_unordered_samples=0,
+            n_genes_ordered=cls.num_genes,
+            n_genes_unordered=0,
+            dist=norm(loc=100, scale=25),
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=314,
         )
-        (test_expression_data2, _, _, _, _) = (
-            _datagen._generate_rank_entropy_data(
-                n_ordered_samples=cls.num_samples_g2,
-                n_unordered_samples=0,
-                n_genes_ordered=cls.num_genes,
-                n_genes_unordered=0,
-                dist=norm(loc=100, scale=25),
-                shuffle_genes=True,
-                shuffle_samples=True,
-                seed=1618,
-            )
+        (test_expression_data2, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=cls.num_samples_g2,
+            n_unordered_samples=0,
+            n_genes_ordered=cls.num_genes,
+            n_genes_unordered=0,
+            dist=norm(loc=100, scale=25),
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=1618,
         )
         cls.good_class_data_X = np.vstack(
             [test_expression_data1, test_expression_data2]
@@ -345,33 +339,27 @@ class TestDiracClassification(unittest.TestCase):
         cls.good_class_data_y = np.array([0] * 20 + [1] * 15)
 
         # Generate test data with a bad ability to classify
-        (test_expression_data1, _, _, _, _) = (
-            _datagen._generate_rank_entropy_data(
-                n_ordered_samples=0,
-                n_unordered_samples=cls.num_samples_g1,
-                n_genes_ordered=0,
-                n_genes_unordered=cls.num_genes,
-                dist=norm(loc=100, scale=25),
-                shuffle_genes=True,
-                shuffle_samples=True,
-                seed=3512,
-            )
+        (test_expression_data1, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=0,
+            n_unordered_samples=cls.num_samples_g1,
+            n_genes_ordered=0,
+            n_genes_unordered=cls.num_genes,
+            dist=norm(loc=100, scale=25),
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=3512,
         )
-        (test_expression_data2, _, _, _, _) = (
-            _datagen._generate_rank_entropy_data(
-                n_ordered_samples=0,
-                n_unordered_samples=cls.num_samples_g2,
-                n_genes_ordered=0,
-                n_genes_unordered=cls.num_genes,
-                dist=norm(loc=100, scale=25),
-                shuffle_genes=True,
-                shuffle_samples=True,
-                seed=168,
-            )
+        (test_expression_data2, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=0,
+            n_unordered_samples=cls.num_samples_g2,
+            n_genes_ordered=0,
+            n_genes_unordered=cls.num_genes,
+            dist=norm(loc=100, scale=25),
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=168,
         )
-        cls.bad_class_data_X = np.vstack(
-            [test_expression_data1, test_expression_data2]
-        )
+        cls.bad_class_data_X = np.vstack([test_expression_data1, test_expression_data2])
         cls.bad_class_data_y = np.array(
             [0] * cls.num_samples_g1 + [1] * cls.num_samples_g2
         )
@@ -486,9 +474,7 @@ class TestDiracClassification(unittest.TestCase):
             size=int(0.8 * (self.num_samples_g1 + self.num_samples_g2)),
             replace=False,
         )
-        test_rows = np.ones(
-            self.num_samples_g1 + self.num_samples_g2, dtype=bool
-        )
+        test_rows = np.ones(self.num_samples_g1 + self.num_samples_g2, dtype=bool)
         test_rows[train_rows] = False
 
         X_train = self.good_class_data_X[train_rows, :]
@@ -513,9 +499,7 @@ class TestDiracClassification(unittest.TestCase):
             size=int(0.8 * (self.num_samples_g1 + self.num_samples_g2)),
             replace=False,
         )
-        test_rows = np.ones(
-            self.num_samples_g1 + self.num_samples_g2, dtype=bool
-        )
+        test_rows = np.ones(self.num_samples_g1 + self.num_samples_g2, dtype=bool)
         test_rows[train_rows] = False
 
         X_train = self.bad_class_data_X[train_rows, :]

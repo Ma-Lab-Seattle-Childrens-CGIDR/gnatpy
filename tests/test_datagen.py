@@ -41,9 +41,7 @@ class TestDataGenHelpers(unittest.TestCase):
         self.assertTupleEqual(unordered_array.shape, (10, 20))
         for row in range(10):
             sorted_row = np.sort(unordered_array[row, :])
-            self.assertFalse(
-                np.all(np.equal(unordered_array[row, :], sorted_row))
-            )
+            self.assertFalse(np.all(np.equal(unordered_array[row, :], sorted_row)))
 
     def test_ordered_array(self):
         test_dist = norm(loc=10, scale=5)
@@ -53,9 +51,7 @@ class TestDataGenHelpers(unittest.TestCase):
         self.assertTupleEqual(ordered_array.shape, (10, 20))
         for row in range(10):
             sorted_row = np.sort(ordered_array[row, :])
-            self.assertTrue(
-                np.all(np.equal(ordered_array[row, :], sorted_row))
-            )
+            self.assertTrue(np.all(np.equal(ordered_array[row, :], sorted_row)))
 
     def test_ordered_array_col_shuffle(self):
         test_dist = norm(loc=10, scale=5)
@@ -65,9 +61,7 @@ class TestDataGenHelpers(unittest.TestCase):
         self.assertTupleEqual(ordered_array.shape, (10, 20))
         for row in range(10):
             sorted_row = np.sort(ordered_array[row, :])
-            self.assertFalse(
-                np.all(np.equal(ordered_array[row, :], sorted_row))
-            )
+            self.assertFalse(np.all(np.equal(ordered_array[row, :], sorted_row)))
 
     def test_different_distributions(self):
         # This should probably be some form of test array, but this is easy for now
@@ -102,31 +96,21 @@ class TestDataGenHelpers(unittest.TestCase):
         self.assertTupleEqual(unordered_array.shape, (10, 20))
         for row in range(10):
             sorted_row = np.sort(unordered_array[row, :])
-            self.assertFalse(
-                np.all(np.equal(unordered_array[row, :], sorted_row))
-            )
+            self.assertFalse(np.all(np.equal(unordered_array[row, :], sorted_row)))
 
         # Ordered Array
-        ordered_array = _ordered_array(
-            nrow=10, ncol=20, dist=dist, col_shuffle=False
-        )
+        ordered_array = _ordered_array(nrow=10, ncol=20, dist=dist, col_shuffle=False)
         self.assertTupleEqual(ordered_array.shape, (10, 20))
         for row in range(10):
             sorted_row = np.sort(ordered_array[row, :])
-            self.assertTrue(
-                np.all(np.equal(ordered_array[row, :], sorted_row))
-            )
+            self.assertTrue(np.all(np.equal(ordered_array[row, :], sorted_row)))
 
         # Ordered Array Col Shuffle
-        ordered_array = _ordered_array(
-            nrow=10, ncol=20, dist=dist, col_shuffle=True
-        )
+        ordered_array = _ordered_array(nrow=10, ncol=20, dist=dist, col_shuffle=True)
         self.assertTupleEqual(ordered_array.shape, (10, 20))
         for row in range(10):
             sorted_row = np.sort(ordered_array[row, :])
-            self.assertFalse(
-                np.all(np.equal(ordered_array[row, :], sorted_row))
-            )
+            self.assertFalse(np.all(np.equal(ordered_array[row, :], sorted_row)))
 
 
 class TestGenerateRankEntropyData(unittest.TestCase):
@@ -155,14 +139,10 @@ class TestGenerateRankEntropyData(unittest.TestCase):
             self.assertTrue(np.all(np.equal(column, column[0])))
         for row in unordered_samples:
             sorted_row = np.sort(data[row, ordered_genes])
-            self.assertFalse(
-                np.all(np.equal(data[row, ordered_genes], sorted_row))
-            )
+            self.assertFalse(np.all(np.equal(data[row, ordered_genes], sorted_row)))
         for row in range(n_ordered_samples + n_unordered_samples):
             sorted_row = np.sort(data[row, unordered_genes])
-            self.assertFalse(
-                np.all(np.equal(data[row, unordered_genes], sorted_row))
-            )
+            self.assertFalse(np.all(np.equal(data[row, unordered_genes], sorted_row)))
 
     def test_no_shuffle(self):
         n_ordered_samples = 10
@@ -198,9 +178,7 @@ class TestGenerateRankEntropyData(unittest.TestCase):
         )
         for row in ordered_samples:
             sorted_row = np.sort(data[row, ordered_genes])
-            self.assertTrue(
-                np.all(np.equal(data[row, ordered_genes], sorted_row))
-            )
+            self.assertTrue(np.all(np.equal(data[row, ordered_genes], sorted_row)))
 
     def test_gene_shuffle(self):
         n_ordered_samples = 10
@@ -237,9 +215,7 @@ class TestGenerateRankEntropyData(unittest.TestCase):
         # Make sure the genes are actually scrambled
         for row in ordered_samples:
             sorted_row = np.sort(data[row, ordered_genes])
-            self.assertFalse(
-                np.all(np.equal(data[row, ordered_genes], sorted_row))
-            )
+            self.assertFalse(np.all(np.equal(data[row, ordered_genes], sorted_row)))
 
     def test_shuffle_samples(self):
         n_ordered_samples = 10
