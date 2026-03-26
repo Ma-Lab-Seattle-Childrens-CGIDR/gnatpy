@@ -5,7 +5,7 @@ Scikit-learn classifiers based on DIRAC and CRANE
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin, _fit_context
 from sklearn.utils.multiclass import check_classification_targets
-from sklearn.utils.validation import check_is_fitted
+from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.metrics import euclidean_distances
 
 from gnatpy import dirac_functions as dirac
@@ -24,7 +24,7 @@ class DiracClassifier(ClassifierMixin, BaseEstimator):
     y_ : ndarray, shape (n_samples,)
         the labels passed during :meth:`fit`.
 
-    rank_templates_ : ndarray, shape (n_classes, (n_features_in_*(n_features_in_+1)/2))
+    rank_templates_ : ndarray, shape (n_classes, (n_features_in_*(n_features_in_-1)/2))
         the rank templates for each class
 
     classes_ : ndarray, shape (n_classes,)
@@ -37,6 +37,8 @@ class DiracClassifier(ClassifierMixin, BaseEstimator):
         names of features seen during :term:`fit`. defined only when `x`
         has feature names that are all strings.
     """
+
+    _parameter_constraints = {}
 
     @_fit_context(prefer_skip_nested_validation=True)
     def fit(self, X, y):
@@ -58,7 +60,7 @@ class DiracClassifier(ClassifierMixin, BaseEstimator):
         """
 
         # Validate the input data
-        X, y = self._validate_data(X, y)
+        X, y = validate_data(self, X, y)
         # Check that the targets are valid
         check_classification_targets(y)
 
@@ -73,7 +75,7 @@ class DiracClassifier(ClassifierMixin, BaseEstimator):
         self.rank_templates_ = np.empty(
             (
                 self.classes_.shape[0],
-                (self.n_features_in_ * (self.n_features_in_ + 1) // 2),
+                (self.n_features_in_ * (self.n_features_in_ - 1) // 2),
             )
         )
         for idx, c in enumerate(self.classes_):
@@ -103,7 +105,7 @@ class DiracClassifier(ClassifierMixin, BaseEstimator):
         check_is_fitted(self)
 
         # Validate the input
-        X = self._validate_data(X, reset=False)
+        X = validate_data(self, X, reset=False)
 
         # Find which class template each sample is closest to
         # First, find the rank array (which is the DIRAC rank vector for each row)
@@ -154,7 +156,7 @@ class CraneClassifier(ClassifierMixin, BaseEstimator):
         has feature names that are all strings.
     """
 
-    _param_constraints = {"ties_method": [str]}
+    _parameter_constraints = {"ties_method": [str]}
 
     def __init__(self, ties_method="average"):
         self.ties_method = ties_method
@@ -178,7 +180,7 @@ class CraneClassifier(ClassifierMixin, BaseEstimator):
             Returns self.
         """
         # validate the data
-        X, y = self._validate_data(X, y)
+        X, y = validate_data(self, X, y)
         # Check that the targets are valid
         check_classification_targets(y)
 
@@ -220,7 +222,7 @@ class CraneClassifier(ClassifierMixin, BaseEstimator):
         check_is_fitted(self)
 
         # Validate the input
-        X = self._validate_data(X, reset=False)
+        X = validate_data(self, X, reset=False)
 
         # Compute the rank array for the input X
         rank_array = crane._rank_array(X, "average")

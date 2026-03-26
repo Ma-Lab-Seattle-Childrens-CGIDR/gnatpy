@@ -10,13 +10,12 @@ from scipy.stats import norm
 from gnatpy.crane_functions import (
     crane_gene_set_entropy,
     crane_gene_set_classification,
-    CraneClassifier,
     _crane_differential_entropy,
     _rank_array,
     _rank_grouping_score,
     _rank_centroid,
 )
-from gnatpy import _datagen, crane_functions
+from gnatpy import _datagen, crane_functions, CraneClassifier
 
 
 class TestCraneHelperFunctions(unittest.TestCase):
@@ -393,7 +392,7 @@ class TestCraneClassification(unittest.TestCase):
         good_classifier = good_classifier.fit(X_train, y_train)
 
         # Classify the test samples
-        y_pred = good_classifier.classify(X_test)
+        y_pred = good_classifier.predict(X_test)
 
         # This classifier should be perfect
         self.assertAlmostEqual(np.equal(y_pred, y_test).mean(), 1.0)
@@ -418,9 +417,9 @@ class TestCraneClassification(unittest.TestCase):
         bad_classifier = bad_classifier.fit(X_train, y_train)
 
         # Classify the test samples
-        y_pred = bad_classifier.classify(X_test)
+        y_pred = bad_classifier.predict(X_test)
 
-        # This classifier should be perfect
+        # This classifier should not be perfect
         self.assertLess(np.equal(y_pred, y_test).mean(), 0.7)
 
 

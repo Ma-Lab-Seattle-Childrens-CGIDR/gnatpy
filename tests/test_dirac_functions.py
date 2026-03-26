@@ -487,7 +487,7 @@ class TestDiracClassification(unittest.TestCase):
         good_classifier = good_classifier.fit(X_train, y_train)
 
         # Classify the test samples
-        y_pred = good_classifier.classify(X_test)
+        y_pred = good_classifier.predict(X_test)
 
         # This classifier should be perfect
         self.assertAlmostEqual(np.equal(y_pred, y_test).mean(), 1.0)
@@ -512,9 +512,9 @@ class TestDiracClassification(unittest.TestCase):
         bad_classifier = bad_classifier.fit(X_train, y_train)
 
         # Classify the test samples
-        y_pred = bad_classifier.classify(X_test)
+        y_pred = bad_classifier.predict(X_test)
 
-        # This classifier should be perfect
+        # This classifier should not be perfect
         self.assertLess(np.equal(y_pred, y_test).mean(), 0.7)
 
 
