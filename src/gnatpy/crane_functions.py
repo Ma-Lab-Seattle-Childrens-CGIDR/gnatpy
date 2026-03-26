@@ -3,21 +3,20 @@
 # Imports
 # Standard Library Imports
 from __future__ import annotations
-from typing import Optional, Literal, Callable, Union, Tuple
+
+from typing import Callable, Literal, Optional, Tuple, Union
 
 # External Imports
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
-from scipy.stats import rankdata, gaussian_kde
+from numpy.typing import NDArray
+from scipy.stats import gaussian_kde, rankdata
 
 # Local imports
 from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
-from gnatpy.gnatpy_exceptions import NotFitError
 from gnatpy.gnatpy_types import Array1D, Array2D
-
 
 # region Main Fuctions
 
@@ -177,128 +176,6 @@ def crane_gene_set_entropy(
 
 # endregion Main Functions
 
-# region CRANE Classifier
-
-
-class CraneClassifier:
-    """Class for using CRANE to perform classification
-
-    Parameters
-    ----------
-    rank_centroids
-    """
-
-    def __init__(self):
-        self.rank_centroids = None
-        self.classes = None
-        self.num_labels = None
-
-    def fit(
-        self,
-        X: Array2D | pd.DataFrame,
-        y: Array1D | pd.DataFrame | pd.Series,
-    ) -> CraneClassifier:
-        """Fit the classifier
-
-        Parameters
-        ----------
-        X : Array2D or pd.DataFrame
-            Features array, should be a pandas DataFrame or numpy
-            ndarray with columns representing genes in a gene network,
-            and rows representing different samples, and values
-            corresponding to expression level
-        y : Array2D or pd.DataFrame or pd.Series
-            Target array, should be a pandas Series or numpy ndarray,
-            with length equal to the number of rows in X. Each entry
-            should represent the class of the corresponding sample in X.
-            The order should correspond between X and y, and the indexes
-            will not be aligned between them.
-
-        Returns
-        -------
-        CraneClassifier
-            Fitted CRANE classifier object
-
-        Notes
-        -----
-        This updates the classifier in place, and also returns itself.
-        """
-        rank_centroids = []
-        classes = np.unique(y)
-
-        if isinstance(X, pd.DataFrame):
-            X = X.to_numpy()
-        elif isinstance(X, np.ndarray):
-            pass
-        else:
-            raise ValueError(
-                "Invalid feature array type, must be pandas DataFrame or numpy ndarray"
-            )
-
-        if isinstance(y, pd.DataFrame) or isinstance(y, pd.Series):
-            y = y.to_numpy()
-        elif isinstance(y, np.ndarray):
-            pass
-        else:
-            raise ValueError(
-                "Invalid feature array type, must be pandas DataFrame or numpy ndarray"
-            )
-
-        # Reshape y to be 1D for easier indexing
-        y = y.ravel()
-
-        for c in classes:
-            # get all the rows corresponding to this class
-            c_X = X[y == c, :]
-            rank_centroids.append(_rank_centroid(c_X))
-
-        self.rank_centroids = rank_centroids
-        self.classes = classes
-        self.num_labels = len(classes)
-        return self
-
-    def classify(self, X: Array2D | pd.DataFrame) -> Union[pd.Series, NDArray]:
-        """Use the fitted classifier to classify samples
-
-        Parameters
-        ----------
-        X : Array2D or pd.DataFrame
-            Features array, should be a pandas DataFrame or numpy
-            ndarray with columns representing genes in a gene network,
-            and rows representing different samples, and values
-            corresponding to expression level
-
-        Returns
-        -------
-        pd.Series|NDArray
-            Predicted classes for all the samples. If X is a DataFrame,
-            this will be a pandas Series; if X is a ndarray, this will
-            be a 1-dimensional numpy array
-        """
-        if self.rank_centroids is None:
-            raise NotFitError(
-                "DIRAC Classifier must be fit before use (try calling the fit method)"
-            )
-        if isinstance(X, pd.DataFrame):
-            return pd.Series(self._classify_arr(X.to_numpy()), index=X.index)
-        elif isinstance(X, np.ndarray):
-            return self._classify_arr(X)
-        else:
-            raise ValueError(
-                f"X must be either a pandas DataFrame or a numpy ndarray, received {type(X)}"
-            )
-
-    def _classify_arr(self, X: Array2D) -> NDArray:
-        class_array = np.zeros((X.shape[0], self.num_labels), dtype=float)
-        rank_array = _rank_array(X)
-        for idx, centroid in enumerate(self.rank_centroids):
-            class_array[:, idx] = np.sqrt(
-                np.square(np.subtract(rank_array, centroid)).sum(axis=1)
-            )
-        return self.classes[np.argmin(class_array, axis=1)]
-
-
-# endregion CRANE Classifier
 
 # region Rank Centroid Functions
 
@@ -316,11 +193,20 @@ def _rank_array(
     return rankdata(in_array, method=method, axis=1, nan_policy="omit")
 
 
-def _rank_centroid(in_array: [int | float]) -> NDArray[int]:
-    return _rank_array(in_array=in_array).mean(axis=0).reshape(1, -1)
+def _rank_centroid(
+    in_array: Array2D,
+    method: Literal[
+        "average",
+        "min",
+        "max",
+        "dense",
+        "ordinal",
+    ] = "average",
+) -> NDArray[int]:
+    return _rank_array(in_array=in_array, method=method).mean(axis=0).reshape(1, -1)
 
 
-def _rank_grouping_score(in_array: [int | float]) -> NDArray[int]:
+def _rank_grouping_score(in_array: Array2D) -> Array1D:
     ranked_array = _rank_array(in_array)
     centroid = ranked_array.mean(axis=0)
     return np.sqrt(np.square(np.subtract(ranked_array, centroid)).sum(axis=1)).mean()

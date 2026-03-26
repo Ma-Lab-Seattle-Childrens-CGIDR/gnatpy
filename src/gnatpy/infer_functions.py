@@ -3,11 +3,11 @@
 # Imports
 # Standard Library Imports
 from __future__ import annotations
-from typing import Optional, Union, Callable, Tuple
+
+from typing import Callable, Optional, Tuple, Union
 
 # Enternal Imports
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
 from scipy.stats import gaussian_kde, rankdata
 
@@ -15,11 +15,12 @@ from scipy.stats import gaussian_kde, rankdata
 from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
+from gnatpy.gnatpy_types import Array1D, Array2D
 
 
 # region Main Functions
 def infer_gene_set_entropy(
-    expression_data: NDArray[float | int] | pd.DataFrame,
+    expression_data: Union[Array2D, pd.DataFrame],
     sample_group1,
     sample_group2,
     gene_network,
@@ -105,7 +106,7 @@ def infer_gene_set_entropy(
 # region Helper Functions
 
 
-def _vector_entropy(in_vec: NDArray[float | int]) -> float:
+def _vector_entropy(in_vec: Array1D) -> float:
     _, count = np.unique(in_vec, return_counts=True)
     tot = np.sum(count)
     p_x = count / tot
@@ -113,14 +114,12 @@ def _vector_entropy(in_vec: NDArray[float | int]) -> float:
     return -np.sum(np.multiply(p_x, log_p_x))
 
 
-def _rank_array_entropy(in_array: NDArray[float | int]) -> float:
+def _rank_array_entropy(in_array: Array2D) -> float:
     rank_array = rankdata(in_array, method="average", nan_policy="omit", axis=1)
     return np.apply_along_axis(_vector_entropy, axis=0, arr=rank_array).mean()
 
 
-def _infer_differential_entropy(
-    a: NDArray[float | int], b: NDArray[float | int]
-) -> float:
+def _infer_differential_entropy(a: Array2D, b: Array2D) -> float:
     return np.abs(_rank_array_entropy(a) - _rank_array_entropy(b))
 
 

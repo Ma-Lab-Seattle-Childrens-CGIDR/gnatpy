@@ -3,31 +3,31 @@
 # Imports
 # Standard Library Imports
 from __future__ import annotations
-from typing import Union, Optional, Callable, Tuple
+
+from typing import Callable, Optional, Tuple, Union
 
 # External Imports
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
+from numpy.typing import NDArray
 from scipy.stats import gaussian_kde
 
 # Local Imports
 from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
-from gnatpy.gnatpy_exceptions import NotFitError
-
+from gnatpy.gnatpy_types import Array1D, Array2D
 
 # region Main Functions
 
 
 def dirac_gene_set_classification(
-    expression_data: NDArray[float | int] | pd.DataFrame,
+    expression_data: Union[Array2D, pd.DataFrame],
     sample_group1,
     sample_group2,
     gene_network,
     kernel_density_estimate: bool = True,
-    bw_method: Optional[Union[str | float | Callable[[gaussian_kde], float]]] = None,
+    bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
     iterations: int = 10_000,
     replace: bool = True,
     seed: Optional[int] = None,
@@ -98,12 +98,12 @@ def dirac_gene_set_classification(
 
 
 def dirac_gene_set_entropy(
-    expression_data: NDArray[float | int] | pd.DataFrame,
+    expression_data: Union[Array2D, pd.DataFrame],
     sample_group1,
     sample_group2,
     gene_network,
     kernel_density_estimate: bool = True,
-    bw_method: Optional[Union[str | float | Callable[[gaussian_kde], float]]] = None,
+    bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
     iterations: int = 1_000,
     replace: bool = True,
     seed: Optional[int] = None,
@@ -113,7 +113,7 @@ def dirac_gene_set_entropy(
 
     Parameters
     ----------
-    expression_data : np.ndarray | pd.DataFrame
+    expression_data : np.ndarray or pd.DataFrame
         Gene expression data, either a numpy array or a pandas
         DataFrame, with rows representing different samples, and columns
         representing different genes
@@ -136,7 +136,7 @@ def dirac_gene_set_entropy(
         Whether to use a kernel density estimate for calculating the
         p-value. If True, will use a Gaussian Kernel Density Estimate,
         if False will use an empirical CDF
-    bw_method : Optional[Union[str|float|Callable[[gaussian_kde], float]]]
+    bw_method : str or float or Callable[[gaussian_kde], float], optional
         Bandwidth method, see `scipy.stats.gaussian_kde <https://docs.sc
         ipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.h
         tml>`_ for details
@@ -154,7 +154,7 @@ def dirac_gene_set_entropy(
 
     Returns
     -------
-    Tuple[float,float]
+    tuple of float,float
         Tuple of the difference in rank conservation index, and the
         significance level found via bootstrapping
     """
@@ -175,142 +175,27 @@ def dirac_gene_set_entropy(
 
 # endregion Main Functions
 
-# region Dirac Classifier
-
-
-class DiracClassifier:
-    """Class for using DIRAC to perform classification"""
-
-    def __init__(self):
-        self.rank_templates = None
-        self.classes = None
-        self.num_labels = None
-
-    def fit(
-        self,
-        X: NDArray[float | int] | pd.DataFrame,
-        y: NDArray[float | int] | pd.DataFrame | pd.Series,
-    ) -> DiracClassifier:
-        """Fit the classifier
-
-        Parameters
-        ----------
-        X : NDArray[float|int]|pd.DataFrame
-            Features array, should be a pandas DataFrame or numpy
-            ndarray with columns representing genes in a gene network,
-            and rows representing different samples, and values
-            corresponding to expression level
-        y : NDArray[float|int]|pd.DataFrame|pd.Series
-            Target array, should be a pandas Series or numpy ndarray,
-            with length equal to the number of rows in X. Each entry
-            should represent the class of the corresponding sample in X.
-            The order should correspond between X and y, and the indexes
-            will not be aligned between them.
-
-        Returns
-        -------
-        DiracClassifier
-            Fitted DIRAC classifier object
-
-        Notes
-        -----
-        This updates the classifier in place, and also returns itself.
-        """
-        rank_templates = []
-        classes = np.unique(y)
-
-        if isinstance(X, pd.DataFrame):
-            X = X.to_numpy()
-        elif isinstance(X, np.ndarray):
-            pass
-        else:
-            raise ValueError(
-                "Invalid feature array type, must be pandas DataFrame or numpy ndarray"
-            )
-
-        if isinstance(y, pd.DataFrame) or isinstance(y, pd.Series):
-            y = y.to_numpy()
-        elif isinstance(y, np.ndarray):
-            pass
-        else:
-            raise ValueError(
-                "Invalid feature array type, must be pandas DataFrame or numpy ndarray"
-            )
-        # Reshape y to be 1D for easier indexing
-        y = y.reshape(-1)
-
-        for c in classes:
-            # get all the rows corresponding to this class
-            c_X = X[y == c, :]
-            rank_templates.append(_rank_template(c_X))
-        self.rank_templates = rank_templates
-        self.classes = classes
-        self.num_labels = len(classes)
-        return self
-
-    def classify(
-        self, X: NDArray[float | int] | pd.DataFrame
-    ) -> Union[pd.Series, NDArray]:
-        """Use the fitted classifier to classify samples
-
-        Parameters
-        ----------
-        X : NDArray[float|int]|pd.DataFrame
-            Features array, should be a pandas DataFrame or numpy
-            ndarray with columns representing genes in a gene network,
-            and rows representing different samples, and values
-            corresponding to expression level
-
-        Returns
-        -------
-        pd.Series | NDArray
-            Predicted classes for all the samples. If X is a DataFrame,
-            this will be a pandas Series; if X is a ndarray, this will
-            be a 1-dimensional numpy array
-        """
-        if self.rank_templates is None:
-            raise NotFitError(
-                "DIRAC Classifier must be fit before use (try calling the fit method)"
-            )
-        if isinstance(X, pd.DataFrame):
-            return pd.Series(self._classify_arr(X.to_numpy()), index=X.index)
-        elif isinstance(X, np.ndarray):
-            return self._classify_arr(X)
-        else:
-            raise ValueError(
-                f"X must be either a pandas DataFrame or a numpy ndarray, received {type(X)}"
-            )
-
-    def _classify_arr(self, X: NDArray[float | int]) -> NDArray:
-        class_array = np.zeros((X.shape[0], self.num_labels), dtype=float)
-        rank_array = _rank_array(X)
-        for idx, template in enumerate(self.rank_templates):
-            class_array[:, idx] = np.equal(rank_array, template).mean(axis=1)
-        return self.classes[np.argmax(class_array, axis=1)]
-
-
-# endregion Dirac Classifier
 
 # region Rank Vector
 
 
-def _rank_vector(in_vector: NDArray[int | float]) -> NDArray[int]:
+def _rank_vector(in_vector: Array1D) -> Array1D:
     rank_array = np.repeat(in_vector.reshape(1, -1), len(in_vector), axis=0)
     diff_array = rank_array - rank_array.T
     return (diff_array[np.triu_indices(len(in_vector), k=1)] > 0).astype(int)
 
 
-def _rank_array(in_array: NDArray[int | float]) -> NDArray[int]:
+def _rank_array(in_array: Array2D) -> Array2D:
     return np.apply_along_axis(_rank_vector, axis=1, arr=in_array)
 
 
-def _rank_template(in_array: NDArray[int | float]) -> NDArray[int]:
+def _rank_template(in_array: Array2D) -> Array1D:
     return (
         np.greater(_rank_array(in_array).mean(axis=0), 0.5).astype(int).reshape(1, -1)
     )
 
 
-def _rank_matching_scores(in_array: NDArray[int | float]) -> NDArray[float]:
+def _rank_matching_scores(in_array: Array2D) -> Array1D:
     rank_array = _rank_array(in_array)
     rank_template = np.greater(rank_array.mean(axis=0), 0.5).astype(int).reshape(1, -1)
     return np.equal(rank_array, rank_template).mean(axis=1)
@@ -320,9 +205,7 @@ def _rank_conservation_index(in_array: NDArray[int]) -> float:
     return _rank_matching_scores(in_array).mean()
 
 
-def _dirac_differential_entropy(
-    a: NDArray[float | int], b: NDArray[float | int]
-) -> float:
+def _dirac_differential_entropy(a: Array2D, b: Array2D) -> float:
     return np.abs(_rank_conservation_index(a) - _rank_conservation_index(b))
 
 
@@ -331,9 +214,7 @@ def _dirac_differential_entropy(
 # region classification
 
 
-def _dirac_classification_rate(
-    a: NDArray[float | int], b: NDArray[float | int]
-) -> float:
+def _dirac_classification_rate(a: Array2D, b: Array2D) -> float:
     # Find the rank Templates
     rank_array_a = _rank_array(a)
     rank_array_b = _rank_array(b)

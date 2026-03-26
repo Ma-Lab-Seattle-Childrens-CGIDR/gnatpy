@@ -3,12 +3,12 @@
 # Imports
 # Standard Library Imports
 from __future__ import annotations
+
 from itertools import combinations
-from typing import Optional, Union, Callable, Tuple
+from typing import Callable, Optional, Tuple, Union
 
 # Enternal Imports
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
 from scipy.stats import gaussian_kde, kendalltau
 
@@ -16,12 +16,13 @@ from scipy.stats import gaussian_kde, kendalltau
 from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
+from gnatpy.gnatpy_types import Array2D
 
 # region Main Functions
 
 
 def race_gene_set_entropy(
-    expression_data: NDArray[float | int] | pd.DataFrame,
+    expression_data: Union[Array2D, pd.DataFrame],
     sample_group1,
     sample_group2,
     gene_network,
@@ -100,7 +101,7 @@ def race_gene_set_entropy(
 
 
 # region Rank Correlation Functions
-def _rank_correlation_mean(input_array: NDArray[int | float]) -> float:
+def _rank_correlation_mean(input_array: Array2D) -> float:
     sum = 0.0
     count = 0
     for a, b in combinations(range(input_array.shape[0]), 2):
@@ -109,9 +110,7 @@ def _rank_correlation_mean(input_array: NDArray[int | float]) -> float:
     return sum / count
 
 
-def _race_differential_entropy(
-    a: NDArray[int | float], b: NDArray[int | float]
-) -> float:
+def _race_differential_entropy(a: Array2D, b: Array2D) -> float:
     return np.abs(_rank_correlation_mean(a) - _rank_correlation_mean(b))
 
 
