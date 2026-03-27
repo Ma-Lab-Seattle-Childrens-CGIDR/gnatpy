@@ -105,7 +105,23 @@ def _rank_correlation_mean(input_array: Array2D) -> float:
     sum = 0.0
     count = 0
     for a, b in combinations(range(input_array.shape[0]), 2):
-        sum += ((kendalltau(input_array[a], input_array[b]).statistic * -1) + 1) / 2
+        # Since we don't carry about the p-value, try and reduce the cost of its calculation
+        # Realistically just use DIRAC, since that should calculate the same value...
+        sum += (
+            (
+                (
+                    kendalltau(
+                        input_array[a],
+                        input_array[b],
+                        alternative="less",  # Skips two sided calculation
+                        method="asymptotic",  # Should be faster than exact, and skips check of size
+                    ).statistic
+                    * -1
+                )
+                + 1
+            )
+            / 2
+        )
         count += 1
     return sum / count
 
