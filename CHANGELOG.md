@@ -8,6 +8,10 @@
 
 <!--toc:end-->
 
+## Release DEV
+
+- Added a rank normalization step to CRANE prior to centroid calculation
+
 ## Release 0.2.0
 
 - Moved DIRAC and CRANE classifiers into their own module,
