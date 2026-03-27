@@ -10,13 +10,14 @@ from typing import Callable, Optional, Tuple, Union
 # Enternal Imports
 import numpy as np
 import pandas as pd
-from scipy.stats import gaussian_kde, kendalltau
+from scipy.stats import gaussian_kde
 
 # Local Imports
 from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
 from gnatpy.gnatpy_types import Array2D
+from gnatpy.statistical_utils import kendalltau
 
 # region Main Functions
 
@@ -105,23 +106,16 @@ def _rank_correlation_mean(input_array: Array2D) -> float:
     sum = 0.0
     count = 0
     for a, b in combinations(range(input_array.shape[0]), 2):
-        # Since we don't carry about the p-value, try and reduce the cost of its calculation
-        # Realistically just use DIRAC, since that should calculate the same value...
         sum += (
             (
-                (
-                    kendalltau(
-                        input_array[a],
-                        input_array[b],
-                        alternative="less",  # Skips two sided calculation
-                        method="asymptotic",  # Should be faster than exact, and skips check of size
-                    ).statistic
-                    * -1
+                kendalltau(
+                    input_array[a],
+                    input_array[b],
                 )
-                + 1
+                * -1
             )
-            / 2
-        )
+            + 1
+        ) / 2
         count += 1
     return sum / count
 
