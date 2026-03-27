@@ -27,7 +27,7 @@ class TestCraneHelperFunctions(unittest.TestCase):
                 np.all(np.equal(ranked_array[:, col], ranked_array[:, col][0]))
             )
         # +1 since rank array starts from 1
-        np.testing.assert_array_equal(np.arange(5) + 1, ranked_array[0])
+        np.testing.assert_array_equal(1 - ((np.arange(5) + 1) - 1) / 5, ranked_array[0])
 
     def test_rank_centroid(self):
         test_array = np.array(
@@ -40,8 +40,8 @@ class TestCraneHelperFunctions(unittest.TestCase):
         )
         test_centroid = _rank_centroid(test_array)
         self.assertTupleEqual(test_centroid.shape, (1, 5))
-        np.testing.assert_array_equal(
-            test_centroid, np.array([1, 2, 3, 4, 5]).reshape(1, -1)
+        np.testing.assert_array_almost_equal(
+            test_centroid, np.array([1.0, 0.8, 0.6, 0.4, 0.2]).reshape(1, -1)
         )
 
         test_array = np.array(
@@ -53,8 +53,11 @@ class TestCraneHelperFunctions(unittest.TestCase):
             ]
         )
         test_centroid = _rank_centroid(test_array)
-        np.testing.assert_array_equal(
-            test_centroid, np.array([5 / 4, 7 / 4, 3, 4, 5]).reshape(1, -1)
+        np.testing.assert_array_almost_equal(
+            test_centroid,
+            np.array([(3.0 + 0.8) / 4, (3 * 0.8 + 1.0) / 4, 0.6, 0.4, 0.2]).reshape(
+                1, -1
+            ),
         )
 
         # Test random array
@@ -62,7 +65,9 @@ class TestCraneHelperFunctions(unittest.TestCase):
         test_array = rng.uniform(low=0, high=1, size=10 * 20).reshape(10, 20)
         test_centroid = _rank_centroid(test_array)
         self.assertTupleEqual(test_centroid.shape, (1, 20))
-        self.assertAlmostEqual(np.mean(test_centroid), 10.5)
+        # Expected mean
+        expected_mean = np.mean(1 - (np.arange(20) / 20))
+        self.assertAlmostEqual(np.mean(test_centroid), expected_mean)
         # All values should be close together based on distribution of random ranks
         self.assertLess(np.std(test_centroid), 2.5)
 

@@ -190,7 +190,14 @@ def _rank_array(
         "ordinal",
     ] = "average",
 ) -> Array2D:
-    return rankdata(in_array, method=method, axis=1, nan_policy="omit")
+    """
+    For each row in array, perform ranking and then rank normalization
+    """
+    ranks = rankdata(in_array, method=method, axis=1, nan_policy="omit")
+    # Perform rank normalization, w = 1- (r(i) - 1)/|r|
+    # This is equivalent to Borda normalization in the case where we have
+    # full rank lists
+    return 1 - (ranks - 1) / ranks.shape[1]
 
 
 def _rank_centroid(
