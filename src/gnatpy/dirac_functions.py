@@ -255,3 +255,10 @@ def _dirac_classification_rate(a: Array2D, b: Array2D) -> float:
 
 
 # endregion classification
+
+
+# NOTE: Multiway DIRAC:
+# 1.) Find rank templates for each group, and all samples combined
+# 2.) Find weighted sum (weighted by sample count) of matches from group templates to overall templates
+# 3.) Find sum of matches from each sample to its own groups template
+# 4.) The statistic is then the ratio of these two, between group mismatches / within group mismatches
