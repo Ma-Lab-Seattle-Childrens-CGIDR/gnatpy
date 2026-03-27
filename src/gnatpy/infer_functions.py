@@ -88,10 +88,9 @@ def infer_gene_set_entropy(
     """
     return _bootstrap_rank_entropy_p_value(
         samples_array=expression_data,
-        sample_group1=sample_group1,
-        sample_group2=sample_group2,
+        sample_groups=[sample_group1, sample_group2],
         gene_network=gene_network,
-        rank_entropy_fun=_infer_differential_entropy,
+        rank_entropy_fun=_infer_differential_entropy,  # type: ignore
         kernel_density_estimate=kernel_density_estimate,
         bw_method=bw_method,
         iterations=iterations,

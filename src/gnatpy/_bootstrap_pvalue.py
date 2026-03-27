@@ -3,7 +3,7 @@
 # Imports
 # Standard Library Imports
 from __future__ import annotations
-from typing import cast, Callable, Tuple, Optional, Union
+from typing import Callable, Hashable, Iterable, Optional, Tuple, Union
 
 # External Imports
 import joblib
@@ -12,16 +12,15 @@ import pandas as pd
 from scipy.stats import gaussian_kde, ecdf
 
 # Local Imports
-from gnatpy.gnatpy_types import Array1D, Array2D
+from gnatpy.gnatpy_types import Array1D, Array2D, EntropyFunction
 
 
 # region Main Function
 def _bootstrap_rank_entropy_p_value(
     samples_array: Array2D | np.typing.ArrayLike | pd.DataFrame,
-    sample_group1,
-    sample_group2,
-    gene_network,
-    rank_entropy_fun: Callable[[Array2D, Array2D], float],
+    sample_groups: Iterable[Array1D] | Iterable[Iterable[Hashable]],
+    gene_network: Array1D | Iterable[Hashable],
+    rank_entropy_fun: EntropyFunction,
     kernel_density_estimate: bool = True,
     bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
     iterations: int = 1_000,
@@ -37,15 +36,14 @@ def _bootstrap_rank_entropy_p_value(
         Gene expression data, either a numpy array or a pandas
         DataFrame, with rows representing different samples, and columns
         representing different genes
-    sample_group1, sample_group2
+    sample_groups: Iterable of Array1D
         Which samples belong to each group. If expression_data is a numpy
-        array, this should be a list/array/iterable of ints. If
-        expression_data is a pandas dataframe, this can be anything that
-        can index a dataframe inside a .loc (see pandas documentation
-        for details)
-    gene_network
+        array, this should be a 1D ArrayLike of integers. If
+        expression_data is a pandas dataframe, must be compatible with
+        `pandas.Index.get_indexer <https://pandas.pydata.org/docs/reference/api/pandas.Index.get_indexer.html#pandas.Index.get_indexer>`_
+    gene_network: Array1D or Iterable[Hashable]
         List of indices for genes in the gene network
-    rank_entropy_fun : Callable[[NDArray[float | int], NDArray[float | int]], float]
+    rank_entropy_fun : Callable[Array2D, Array2D], float]
         Function used to calculate the rank entropy difference between
         two sample groups, should take two np.ndarrays as arguments and
         return a float
@@ -80,30 +78,21 @@ def _bootstrap_rank_entropy_p_value(
     # Begin by converting the expression data into the proper form
     # Convert dataframe into numpy array
     if isinstance(samples_array, pd.DataFrame):
-        sg1 = samples_array.loc[sample_group1, gene_network]
-        sg2 = samples_array.loc[sample_group2, gene_network]
-        sg1_size, gn_size = sg1.shape
-        sg2_size, _ = sg2.shape
-        gene_network = list(range(gn_size))
-        sample_group1 = list(range(sg1_size))
-        sample_group2 = list(range(sg1_size, sg1_size + sg2_size))
-        samples_array = np.vstack((sg1.to_numpy(), sg2.to_numpy()))
+        # Convert sample groups of labels into integer positions
+        sample_groups = [
+            samples_array.index.get_indexer(s).ravel() for s in sample_groups
+        ]
+        sample_group_sizes = list(map(len, sample_groups))
+        gene_network = samples_array.columns.get_indexer(gene_network)
+        samples_array = samples_array.to_numpy()
     else:
         samples_array = np.array(samples_array)
-        sg1 = samples_array[sample_group1][:, gene_network]
-        sg2 = samples_array[sample_group2][:, gene_network]
-        sg1_size, gn_size = sg1.shape
-        sg2_size, _ = sg2.shape
-        gene_network = list(range(gn_size))
-        sample_group1 = list(range(sg1_size))
-        sample_group2 = list(range(sg1_size, sg1_size + sg2_size))
-        samples_array = np.vstack((sg1, sg2))
-    sample_group1 = list(sample_group1)
-    sample_group2 = list(sample_group2)
-    sample_group1_size = len(sample_group1)
-    sample_group2_size = len(sample_group2)
-    sample_indices = np.array(sample_group1 + sample_group2)
-    gene_network = list(gene_network)
+        sample_groups = [np.array(s).ravel() for s in sample_groups]
+        gene_network = np.array(gene_network)
+        sample_group_sizes = list(map(len, sample_groups))
+    # Combine sample group indices
+    sample_indices = np.concatenate(sample_groups)
+
     # Create a numpy rng
     rng = np.random.default_rng(seed=seed)
     # Create an array to hold the results
@@ -115,8 +104,8 @@ def _bootstrap_rank_entropy_p_value(
                 rank_entropy_fun=rank_entropy_fun,
                 samples_array=samples_array,
                 sample_indices=sample_indices,
-                sample_group1_size=sample_group1_size,
-                sample_group2_size=sample_group2_size,
+                sample_group_sizes=sample_group_sizes,
+                gene_network=gene_network,
                 replace=replace,
                 seed=rng.integers(low=0, high=np.iinfo(np.intp).max),
             )
@@ -126,10 +115,8 @@ def _bootstrap_rank_entropy_p_value(
         rank_entropy_samples[idx] = entropy
 
     # Calculate the value for the unshuffled array
-    rank_entropy = rank_entropy_fun(
-        cast(Array2D, samples_array[sample_group1][:, gene_network]),
-        cast(Array2D, samples_array[sample_group2][:, gene_network]),
-    )
+    sample_group_arrays = [samples_array[sg][:, gene_network] for sg in sample_groups]
+    rank_entropy = rank_entropy_fun(*sample_group_arrays)
     if not kernel_density_estimate:
         empirical_cdf = ecdf(rank_entropy_samples)
         pvalue = empirical_cdf.sf.evaluate(rank_entropy)[()]
@@ -143,11 +130,11 @@ def _bootstrap_rank_entropy_p_value(
 
 
 def _pvalue_worker(
-    rank_entropy_fun: Callable[[Array2D, Array2D], float],
+    rank_entropy_fun: EntropyFunction,
     samples_array: Array2D,
     sample_indices: Array1D,
-    sample_group1_size: int,
-    sample_group2_size: int,
+    sample_group_sizes: Array1D,
+    gene_network: Array1D,
     replace: bool,
     seed: int,
 ) -> float:
@@ -158,17 +145,19 @@ def _pvalue_worker(
 
     Parameters
     ----------
-    rank_entropy_fun : fn(Array2D, Array2D)->float
+    rank_entropy_fun : EntropyFunction
         Function which takes two numpy arrays and returns a single float
     samples_array : Array2D
-        The combined samples array
+        The array containing the samples
     sample_indices : Array1D
         The indices for samples. This will be split into
         two groups, and the the samples_array will be split
         using these indices. Each index specifies a row in
         the samples_array
-    sample_group1_size, sample_group2_size : int
+    sample_group_sizes : Iterable[int]
         The size of the two sample groups
+    gene_network : Array1D
+        Indices for the gene network
     replace : bool
         Whether to sample with replacement
     seed : int
@@ -178,12 +167,18 @@ def _pvalue_worker(
     rng = np.random.default_rng(seed=seed)
     # Split the samples array
     if replace:
-        sg1 = rng.choice(sample_indices, size=sample_group1_size, replace=replace)
-        sg2 = rng.choice(sample_indices, size=sample_group2_size, replace=replace)
+        sample_groups = [
+            rng.choice(sample_indices, size=s, replace=replace)
+            for s in sample_group_sizes
+        ]
     else:
         shuffled_sample_indices = rng.permuted(sample_indices)
-        sg1 = shuffled_sample_indices[:sample_group1_size]
-        sg2 = shuffled_sample_indices[sample_group1_size:]
-    return rank_entropy_fun(
-        cast(Array2D, samples_array[sg1, :]), cast(Array2D, samples_array[sg2, :])
-    )
+        sample_groups = []
+        cur_idx = 0
+        for sample_group_size in sample_group_sizes:
+            sample_groups.append(
+                shuffled_sample_indices[cur_idx : cur_idx + sample_group_size]
+            )
+            cur_idx += sample_group_size
+    sample_arrays = [samples_array[sg][:, gene_network] for sg in sample_groups]
+    return rank_entropy_fun(*sample_arrays)
