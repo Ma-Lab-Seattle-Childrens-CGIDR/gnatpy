@@ -17,6 +17,8 @@
   from [SciPy](https://scipy.org/),
   licensed under a [BSD-3-Clause licensed](https://github.com/scipy/scipy/blob/main/LICENSE.txt)
   which is also reproduced in the License file.
+- Added functionality for performing a multi-way-DIRAC style analysis
+  on more than two groups of samples
 
 ## Release 0.2.0
 
