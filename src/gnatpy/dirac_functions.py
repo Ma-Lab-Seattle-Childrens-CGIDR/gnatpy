@@ -4,7 +4,7 @@
 # Standard Library Imports
 from __future__ import annotations
 
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Hashable, Iterable, Optional, Tuple, Union
 
 # External Imports
 import numpy as np
@@ -41,15 +41,12 @@ def dirac_gene_set_classification(
         Gene expression data, either a numpy array or a pandas
         DataFrame, with rows representing different samples, and columns
         representing different genes
-    sample_group1
-        Which samples belong to group1. If expression_data is a numpy
+    sample_group1, sample_group2
+        Which samples belong to each group. If expression_data is a numpy
         array, this should be a something able to index the rows of the
         array. If expression_data is a pandas dataframe, this should be
         something that can index rows of a dataframe inside a .loc (see
         pandas documentation for details)
-    sample_group2
-        Which samples belong to group2, see sample_group1 information
-        for more details.
     gene_network
         Which genes belong to the gene network. If expression_data is a
         numpy array, this should be something able to index the columns
@@ -86,7 +83,7 @@ def dirac_gene_set_classification(
         samples_array=expression_data,
         sample_groups=[sample_group1, sample_group2],
         gene_network=gene_network,
-        rank_entropy_fun=_dirac_classification_rate,  # type:ignore
+        rank_entropy_fun=_dirac_classification_rate,  # type: ignore
         kernel_density_estimate=kernel_density_estimate,
         bw_method=bw_method,
         iterations=iterations,
@@ -116,15 +113,12 @@ def dirac_gene_set_entropy(
         Gene expression data, either a numpy array or a pandas
         DataFrame, with rows representing different samples, and columns
         representing different genes
-    sample_group1
-        Which samples belong to group1. If expression_data is a numpy
+    sample_group1, sample_group2
+        Which samples belong to each group. If expression_data is a numpy
         array, this should be a something able to index the rows of the
         array. If expression_data is a pandas dataframe, this should be
         something that can index rows of a dataframe inside a .loc (see
         pandas documentation for details)
-    sample_group2
-        Which samples belong to group2, see sample_group1 information
-        for more details.
     gene_network
         Which genes belong to the gene network. If expression_data is a
         numpy array, this should be something able to index the columns
@@ -187,24 +181,37 @@ def _rank_array(in_array: Array2D) -> Array2D:
     return np.apply_along_axis(_rank_vector, axis=1, arr=in_array)
 
 
-def _rank_template(in_array: Array2D) -> Array1D:
-    return (
-        np.greater(_rank_array(in_array).mean(axis=0), 0.5).astype(int).reshape(1, -1)
-    )
+def _rank_template(rank_array: Array2D) -> Array1D:
+    return np.greater(rank_array.mean(axis=0), 0.5).astype(int).reshape(1, -1)
 
 
-def _rank_matching_scores(in_array: Array2D) -> Array1D:
-    rank_array = _rank_array(in_array)
-    rank_template = np.greater(rank_array.mean(axis=0), 0.5).astype(int).reshape(1, -1)
+def _rank_matching_scores(
+    rank_array: Array2D, rank_template: Optional[Array1D] = None
+) -> Array1D:
+    if rank_template is None:
+        rank_template = _rank_template(rank_array)
     return np.equal(rank_array, rank_template).mean(axis=1)
 
 
-def _rank_conservation_index(in_array: NDArray[int]) -> float:
-    return _rank_matching_scores(in_array).mean()
+def _rank_mismatching_scores(
+    rank_array: Array2D, rank_template: Optional[Array1D] = None
+) -> Array1D:
+    if rank_template is None:
+        rank_template = _rank_template(rank_array)
+    return np.not_equal(rank_array, rank_template).mean(axis=1)
+
+
+def _rank_conservation_index(
+    rank_array: Array2D, rank_template: Optional[Array1D] = None
+) -> float:
+    return _rank_matching_scores(rank_array, rank_template).mean()
 
 
 def _dirac_differential_entropy(a: Array2D, b: Array2D) -> float:
-    return np.abs(_rank_conservation_index(a) - _rank_conservation_index(b))
+    return np.abs(
+        _rank_conservation_index(_rank_array(a))
+        - _rank_conservation_index(_rank_array(b))
+    )
 
 
 # endregion Rank Vector
@@ -253,6 +260,105 @@ def _dirac_classification_rate(a: Array2D, b: Array2D) -> float:
 
 
 # endregion classification
+
+# region DIRAC multiway
+
+
+def dirac_multiway_entropy(
+    expression_data: Union[Array2D, pd.DataFrame],
+    sample_groups: Union[Iterable[Array1D], Iterable[Iterable[Hashable]]],
+    gene_network: Union[Array1D, Iterable[Hashable]],
+    kernel_density_estimate: bool = True,
+    bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
+    iterations: int = 1_000,
+    replace: bool = True,
+    seed: Optional[int] = None,
+    processes: int = -1,
+) -> Tuple[float, float]:
+    """
+    Calculate the DIRAC multiway entropy, and extension of
+    DIRAC entropy to more than 2 groups
+
+    Parameters
+    ----------
+    expression_data : Array2D or pd.DataFrame
+        Gene expression data, either a numpy array or a pandas
+        dataframe, with rows representing different samples, and
+        columns representing different genes
+    sample_groups : Iterable of Array1D or Iterable of Iterable of Hashable
+        The sample groups to compare, can be an iterable of numpy arrays with
+        integer indices, or an iterable of iterables of values used to index a pandas
+        DataFrame (if the expression data is a DataFrame)
+    gene_network : Array1D or Iterable of Hashable
+        Which genes belong to the gene network, can be a numpy array with
+        integer indices, or an iterable of values used to index a pandas
+        DataFrame (if the expression data is a DataFrame)
+    kernel_density_estimate : bool
+        Whether to use a kernel density estimate for calculating the
+        p-value. If True, will use a Gaussian Kernel Density Estimate,
+        if False will use an empirical CDF
+    bw_method : Optional[Union[str|float|Callable[[gaussian_kde], float]]]
+        Bandwidth method, see `scipy.stats.gaussian_kde <https://docs.sc
+        ipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.h
+        tml>`_ for details
+    iterations : int
+        Number of iterations to perform during bootstrapping the null
+        distribution
+    replace : bool
+        Whether to sample with replacement when randomly sampling from
+        the sample groups during bootstrapping
+    seed : int
+        Seed to use for the random number generation during
+        bootstrapping
+    processes : int
+        Number of processes to use during the bootstrapping, default 1
+
+    Returns
+    -------
+    Tuple of (float,float)
+        Tuple of the multiway DIRAC statistic, and the significance level
+        found via bootstrapping
+    """
+    return _bootstrap_rank_entropy_p_value(
+        samples_array=expression_data,
+        sample_groups=sample_groups,
+        gene_network=gene_network,
+        rank_entropy_fun=_dirac_multiway,
+        kernel_density_estimate=kernel_density_estimate,
+        bw_method=bw_method,
+        iterations=iterations,
+        replace=replace,
+        seed=seed,
+        processes=processes,
+    )
+
+
+def _dirac_multiway(*arrays: Array2D) -> float:
+    # Find the rank arrays for each group
+    rank_arrays = [_rank_array(a) for a in arrays]
+    # Find the rank templates for each group
+    rank_templates = [_rank_template(ra) for ra in rank_arrays]
+    rank_templates_array = np.vstack(rank_templates)
+    # Find the "grand" template
+    grand_template = _rank_template(rank_templates_array)
+    # Find the weighted rank convervation index
+    weights = np.array(map(lambda a: a.shape[0], arrays))
+    between_group_differences = (
+        np.not_equal(rank_templates_array, grand_template).sum(axis=1) * weights
+    ).sum()
+    # Divide by the degrees of freedom (one less than the number of groups)
+    between_group_differences /= len(arrays) - 1
+    # Find the within group differences
+    within_group_differences = 0.0
+    for rank_array, rank_template in zip(rank_arrays, rank_templates):
+        within_group_differences += np.not_equal(rank_array, rank_template).sum()
+    # Divide by the degrees of freedom (The total number of samples minus the
+    # number of groups)
+    within_group_differences /= sum(map(lambda a: a.shape[0], arrays)) - len(arrays)
+    return between_group_differences / within_group_differences
+
+
+# endregion DIRAC multiway
 
 
 # NOTE: Multiway DIRAC:

@@ -93,7 +93,9 @@ class TestRankFunctions(unittest.TestCase):
             ]
         )
         expected_array = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.7, 0.2])
-        actual_array = dirac_functions._rank_matching_scores(test_array)
+        actual_array = dirac_functions._rank_matching_scores(
+            dirac_functions._rank_array(test_array)
+        )
         self.assertTupleEqual(actual_array.shape, (8,))
         self.assertListEqual(list(actual_array), list(expected_array))
 
@@ -114,7 +116,7 @@ class TestRankFunctions(unittest.TestCase):
             [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.7, 0.2]
         ).mean()
         actual_rank_conservation_index = dirac_functions._rank_conservation_index(
-            test_array
+            dirac_functions._rank_array(test_array)
         )
         self.assertAlmostEqual(
             actual_rank_conservation_index, expected_rank_conservation_index
@@ -142,8 +144,12 @@ class TestRankFunctions(unittest.TestCase):
             ]
         )
         self.assertLess(
-            dirac_functions._rank_conservation_index(high_entropy_test_array),
-            dirac_functions._rank_conservation_index(low_entropy_test_array),
+            dirac_functions._rank_conservation_index(
+                dirac_functions._rank_array(high_entropy_test_array)
+            ),
+            dirac_functions._rank_conservation_index(
+                dirac_functions._rank_array(low_entropy_test_array)
+            ),
         )
 
     def test_differential_entropy(self):

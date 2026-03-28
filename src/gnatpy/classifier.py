@@ -80,7 +80,7 @@ class DiracClassifier(ClassifierMixin, BaseEstimator):
         )
         for idx, c in enumerate(self.classes_):
             c_X = X[y == c, :]
-            self.rank_templates_[idx, :] = dirac._rank_template(c_X)
+            self.rank_templates_[idx, :] = dirac._rank_template(dirac._rank_array(c_X))
 
         # Return the classifier
         return self
