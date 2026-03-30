@@ -9,7 +9,6 @@ from typing import Callable, Hashable, Iterable, Optional, Tuple, Union
 # External Imports
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 from scipy.stats import gaussian_kde
 
 # Local Imports
