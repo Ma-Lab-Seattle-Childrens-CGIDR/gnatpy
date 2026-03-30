@@ -4,12 +4,11 @@
 # Standard Library Imports
 from __future__ import annotations
 
-from typing import Callable, Literal, Optional, Tuple, Union
+from typing import Callable, Hashable, Iterable, Literal, Optional, Tuple, Union
 
 # External Imports
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 from scipy.stats import gaussian_kde, rankdata
 
 # Local imports
@@ -199,29 +198,36 @@ def _rank_array(
 
 
 def _rank_centroid(
-    in_array: Array2D,
-    method: Literal[
-        "average",
-        "min",
-        "max",
-        "dense",
-        "ordinal",
-    ] = "average",
-) -> NDArray[int]:
-    return _rank_array(in_array=in_array, method=method).mean(axis=0).reshape(1, -1)
+    rank_array: Array2D,
+) -> Array1D:
+    return rank_array.mean(axis=0).reshape(1, -1)
 
 
-def _rank_grouping_score(in_array: Array2D) -> Array1D:
-    ranked_array = _rank_array(in_array)
-    centroid = ranked_array.mean(axis=0)
-    return np.sqrt(np.square(np.subtract(ranked_array, centroid)).sum(axis=1)).mean()
+def _rank_grouping_score(
+    rank_array: Array2D, centroid: Optional[Array1D] = None
+) -> Array1D:
+    if centroid is None:
+        centroid = _rank_centroid(rank_array)
+    return _centroid_distances(rank_array, centroid).mean()
+
+
+def _centroid_distances(
+    rank_array: Array2D, rank_centroid: Optional[Array1D] = None
+) -> Array1D:
+    if rank_centroid is None:
+        rank_centroid = _rank_centroid(rank_array)
+    return np.sqrt(
+        np.square(np.subtract(rank_array, rank_centroid)).sum(axis=1)
+    ).reshape(1, -1)
 
 
 def _crane_differential_entropy(
     a: Array2D,
     b: Array2D,
 ) -> float:
-    return np.abs(_rank_grouping_score(a) - _rank_grouping_score(b))
+    return np.abs(
+        _rank_grouping_score(_rank_array(a)) - _rank_grouping_score(_rank_array(b))
+    )
 
 
 # endregion Rank Centroid Functions
@@ -235,8 +241,8 @@ def _crane_classification_rate(a: Array2D, b: Array2D) -> float:
     rank_array_b = _rank_array(b)
 
     # Compute the rank centroids
-    centroid_a = rank_array_a.mean(axis=0).reshape(1, -1)
-    centroid_b = rank_array_b.mean(axis=0).reshape(1, -1)
+    centroid_a = _rank_centroid(rank_array_a)
+    centroid_b = _rank_centroid(rank_array_b)
 
     # Calculate distances from the rank arrays to the centroids
     centroid_distance_a_array_a = np.sqrt(
@@ -263,7 +269,108 @@ def _crane_classification_rate(a: Array2D, b: Array2D) -> float:
 
     return correct_samples / total_samples
 
-    pass
-
 
 # endregion Classification rate functions
+
+
+# Multiway CRANE:
+# 1.) Find the centroid for each group
+# 2.) Find the centroid across all samples (grand mean)
+# 3.) Calculate between group sum of squared differences
+# 4.) Calculate the within group sum of squared differences
+# 5.) Divide values from 3,4 by their degrees of freedom (N-k for between group, and n-1 for within group)
+# 6.) Take the ratio of the between group value and the within group value
+def crane_multiway_classification(
+    expression_data: Union[Array2D, pd.DataFrame],
+    sample_groups: Union[Iterable[Array1D], Iterable[Iterable[Hashable]]],
+    gene_network: Union[Array1D, Iterable[Hashable]],
+    kernel_density_estimate: bool = True,
+    bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
+    iterations: int = 1_000,
+    replace: bool = True,
+    seed: Optional[int] = None,
+    processes: int = -1,
+) -> Tuple[float, float]:
+    """
+    Calculate the CRANE multiway rank classification, an extension of
+    CRANE classification rate to more than 2 groups
+
+    Parameters
+    ----------
+    expression_data : Array2D or pd.DataFrame
+        Gene expression data, either a numpy array or a pandas
+        dataframe, with rows representing different samples, and
+        columns representing different genes
+    sample_groups : Iterable of Array1D or Iterable of Iterable of Hashable
+        The sample groups to compare, can be an iterable of numpy arrays with
+        integer indices, or an iterable of iterables of values used to index a pandas
+        DataFrame (if the expression data is a DataFrame)
+    gene_network : Array1D or Iterable of Hashable
+        Which genes belong to the gene network, can be a numpy array with
+        integer indices, or an iterable of values used to index a pandas
+        DataFrame (if the expression data is a DataFrame)
+    kernel_density_estimate : bool
+        Whether to use a kernel density estimate for calculating the
+        p-value. If True, will use a Gaussian Kernel Density Estimate,
+        if False will use an empirical CDF
+    bw_method : Optional[Union[str|float|Callable[[gaussian_kde], float]]]
+        Bandwidth method, see `scipy.stats.gaussian_kde <https://docs.sc
+        ipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.h
+        tml>`_ for details
+    iterations : int
+        Number of iterations to perform during bootstrapping the null
+        distribution
+    replace : bool
+        Whether to sample with replacement when randomly sampling from
+        the sample groups during bootstrapping
+    seed : int
+        Seed to use for the random number generation during
+        bootstrapping
+    processes : int
+        Number of processes to use during the bootstrapping, default 1
+
+    Returns
+    -------
+    Tuple of (float,float)
+        Tuple of the multiway DIRAC statistic, and the significance level
+        found via bootstrapping
+    """
+    return _bootstrap_rank_entropy_p_value(
+        samples_array=expression_data,
+        sample_groups=sample_groups,
+        gene_network=gene_network,
+        rank_entropy_fun=_crane_multiway,
+        kernel_density_estimate=kernel_density_estimate,
+        bw_method=bw_method,
+        iterations=iterations,
+        replace=replace,
+        seed=seed,
+        processes=processes,
+    )
+
+
+def _crane_multiway(*arrays: Array2D) -> float:
+    # Combine the arrays and find the rank array
+    combined_array = np.vstack(arrays)
+    combined_rank_array = _rank_array(combined_array)
+    # Find the combined mean
+    combined_centroid = _rank_centroid(combined_rank_array)
+
+    # Find the centroids of each group
+    start_idx = 0
+    # Track the within group and between group centroid distances
+    between_group_distance_sum = 0.0
+    within_group_distance_sum = 0.0
+    for row_idx, a in enumerate(arrays):
+        ra = combined_rank_array[start_idx : (start_idx + a.shape[0])]
+        start_idx += a.shape[0]
+        # Get the centroid of the group
+        centroid = _rank_centroid(ra)
+        # Get the within group distances
+        within_group_distance_sum += _centroid_distances(ra, centroid).sum()
+        # Get the between group distance
+        between_group_distance_sum += (
+            np.sqrt(np.square(np.subtract(centroid, combined_centroid)).sum())
+            * ra.shape[0]  # weight by the number of samples in this group
+        )
+    return between_group_distance_sum / within_group_distance_sum

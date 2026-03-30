@@ -359,8 +359,6 @@ def _dirac_multiway(*arrays: Array2D) -> float:
         ).sum()
 
     # The statistic is the ratio between these two values
-    if groupwise_mismatch == 0.0:
-        return 0.0
     return combined_mismatch / groupwise_mismatch
 
 

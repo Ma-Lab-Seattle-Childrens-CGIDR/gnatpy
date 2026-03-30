@@ -21,6 +21,9 @@
   gene set classification metric. Evaluates the "mismatch" score across
   all samples, and within groups, with a statistic that is the ratio
   of these two values.
+- Added initial implementation of a multi-sample version of CRANE
+  gene set classification metric, which compares the distance to
+  an overall rank centroid to that of the within group rank centroids
 
 ## Release 0.2.0
 

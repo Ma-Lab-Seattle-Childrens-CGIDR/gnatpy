@@ -196,7 +196,7 @@ class CraneClassifier(ClassifierMixin, BaseEstimator):
         for idx, c in enumerate(self.classes_):
             c_X = X[y == c, :]
             self.rank_centroids_[idx, :] = crane._rank_centroid(
-                c_X, method=self.ties_method
+                crane._rank_array(c_X, method=self.ties_method)
             )
 
         # Return the classifier
