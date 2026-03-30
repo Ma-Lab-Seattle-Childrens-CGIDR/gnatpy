@@ -1,15 +1,35 @@
 # Standard Library Imports
+from gnatpy.dirac_functions import dirac_multiway_classification
+import itertools
 import math
 import unittest
+from collections import deque
+from itertools import (
+    islice,
+)
 
 # External Imports
 import numpy as np
 from scipy.stats import norm
 
-from gnatpy import dirac_gene_set_classification, DiracClassifier
-
 # Local Imports
-from gnatpy import dirac_functions, _datagen
+from gnatpy import (
+    DiracClassifier,
+    _datagen,
+    dirac_functions,
+    dirac_gene_set_classification,
+)
+
+
+# Itertools recipe
+def sliding_window(iterable, n):
+    "Collect data into overlapping fixed-length chunks or blocks."
+    # sliding_window('ABCDEFG', 3) → ABC BCD CDE DEF EFG
+    iterator = iter(iterable)
+    window = deque(islice(iterator, n - 1), maxlen=n)
+    for x in iterator:
+        window.append(x)
+        yield tuple(window)
 
 
 class TestRankFunctions(unittest.TestCase):
@@ -522,6 +542,126 @@ class TestDiracClassification(unittest.TestCase):
 
         # This classifier should not be perfect
         self.assertLess(np.equal(y_pred, y_test).mean(), 0.7)
+
+
+# class TestDiracMultiway(unittest.TestCase):
+#     @classmethod
+#     def setUpClass(cls):
+#         cls.num_genes = 10
+#         cls.num_samples_similar = [10, 10, 5]
+#         cls.num_samples_disimilar = [10]
+#         # Generate test data for the similar samples
+#         test_samples = []
+#         for num_samples in cls.num_samples_similar:
+#             (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+#                 n_ordered_samples=sum(cls.num_samples_similar),
+#                 n_unordered_samples=0,
+#                 n_genes_ordered=cls.num_genes,
+#                 n_genes_unordered=0,
+#                 dist=norm(loc=100, scale=25),
+#                 noise_dist=None,  # norm(loc=0, scale=2),
+#                 noise_swaps=None,  # 0.1,
+#                 shuffle_genes=True,
+#                 shuffle_samples=True,
+#                 seed=1236871254,
+#             )
+#             test_samples.append(expr_arr)
+#         for num_samples in cls.num_samples_disimilar:
+#             (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+#                 n_ordered_samples=0,
+#                 n_unordered_samples=num_samples,
+#                 n_genes_ordered=0,
+#                 n_genes_unordered=cls.num_genes,
+#                 dist=norm(loc=100, scale=25),
+#                 shuffle_genes=True,
+#                 shuffle_samples=True,
+#                 seed=1236871254,
+#             )
+#             test_samples.append(expr_arr)
+#         # Combine the samples together
+#         cls.test_diff_samples = np.vstack(test_samples)
+#         # Create an array of sample groups
+#         sample_groups = []
+#         start_idx = 0
+#         for s in itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar):
+#             sample_groups.append(np.array(list(range(start_idx, start_idx + s))))
+#             start_idx += s
+#         cls.test_sample_groups = sample_groups
+#
+#         # Create another sample set that is fully ordered, other
+#         # than some noise
+#         (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+#             n_ordered_samples=sum(
+#                 itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar)
+#             ),
+#             n_unordered_samples=0,
+#             n_genes_ordered=cls.num_genes,
+#             n_genes_unordered=0,
+#             dist=norm(loc=100, scale=25),
+#             noise_dist=norm(loc=0, scale=2),
+#             noise_swaps=None,
+#             shuffle_genes=True,
+#             shuffle_samples=True,
+#             seed=3183658319,
+#         )
+#         cls.test_ordered_samples = expr_arr
+#
+#         # And another one which is fully disordered
+#         (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+#             n_ordered_samples=0,
+#             n_unordered_samples=sum(
+#                 itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar)
+#             ),
+#             n_genes_ordered=cls.num_genes,
+#             n_genes_unordered=0,
+#             dist=norm(loc=100, scale=25),
+#             shuffle_genes=True,
+#             shuffle_samples=True,
+#             seed=1082536,
+#         )
+#         cls.test_unordered_samples = expr_arr
+#
+#         # Also, the gene network
+#         cls.gene_network = np.array(list(range(cls.num_genes)))
+#
+#     def test_dirac_multiway_classification(self):
+#         _, pvalue = dirac_multiway_classification(
+#             expression_data=self.test_diff_samples,
+#             sample_groups=self.test_sample_groups,
+#             gene_network=self.gene_network,
+#             kernel_density_estimate=True,
+#             iterations=1_000,
+#             replace=True,
+#             processes=1,
+#         )
+#         # Ensure that DIRAC multiway spots the differently ordered group
+#         self.assertLessEqual(pvalue, 0.05)
+#
+#     def test_dirac_multiway_all_same_ordered(self):
+#         _, pvalue = dirac_multiway_classification(
+#             expression_data=self.test_ordered_samples,
+#             sample_groups=self.test_sample_groups,
+#             gene_network=self.gene_network,
+#             kernel_density_estimate=True,
+#             iterations=1_000,
+#             replace=True,
+#             processes=1,
+#         )
+#         # Ensure that DIRAC multiway spots the differently ordered group
+#         self.assertGreaterEqual(pvalue, 0.5)
+#
+#     def test_dirac_multiway_all_random(self):
+#         _, pvalue = dirac_multiway_classification(
+#             expression_data=self.test_unordered_samples,
+#             sample_groups=self.test_sample_groups,
+#             gene_network=self.gene_network,
+#             kernel_density_estimate=True,
+#             iterations=1_000,
+#             replace=True,
+#             processes=1,
+#         )
+#         # Ensure that DIRAC multiway spots the differently ordered group
+#         self.assertGreaterEqual(pvalue, 0.99)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,8 @@
 # Imports
 # Standard Library Imports
 from __future__ import annotations
+
+import functools
 from typing import Union, Optional, Tuple
 
 import numpy as np
@@ -11,6 +13,7 @@ import numpy as np
 from scipy.stats import rv_continuous, rv_discrete
 
 # Local Imports
+from gnatpy.gnatpy_types import Array2D
 
 # Typing information
 Distribution = Union[rv_continuous, rv_discrete]
@@ -25,6 +28,8 @@ def _generate_rank_entropy_data(
     n_genes_ordered: int,
     n_genes_unordered: int,
     dist: Distribution,
+    noise_dist: Optional[Distribution] = None,
+    noise_swaps: Optional[Union[float, int]] = None,
     shuffle_genes: bool = True,
     shuffle_samples: bool = True,
     seed: Optional[int] = None,
@@ -44,8 +49,23 @@ def _generate_rank_entropy_data(
     dist : Distribution
         Distribution to use for sampling, should be a scipy
         rv_continuous, or rv_discrete (or at least have a rvs method
-        which takes a single argument size and returns a random sample
-        as a np array of length size)
+        which matches the SciPy API). The seed to this function
+        will be used to create an RNG which is passed as the
+        random state to all calls to the rvs function.
+    noise_dist : Distribution, optional
+        Distribution to use for adding noise to the samples,
+        used to generate random values for each entry in the expression
+        array, and these values are added to the array
+    noise_swaps : float or int, optional
+        Number of random swaps to perform. Randomly selects a row, and then
+        swaps two elements in that row. Can be an integer
+        in which case that is the number of swaps, or a float
+        between 0 and 1 in which case it is the proportion of the
+        number of values in the resulting array to swap
+        (note that it randomly swaps, so it could repeat some swaps
+        so this proportion won't be the number of elements that are swapped,
+        only the number of swaps that are performed). The swapping using the
+        seed argument to seed its rng.
     shuffle_genes : bool
         Whether the order of the genes should be shuffled
     shuffle_samples : bool
@@ -63,23 +83,23 @@ def _generate_rank_entropy_data(
         the unordered samples 4. the indices of the ordered genes 5. the
         indices of the unordered genes
     """
-    rng_generator = np.random.default_rng(seed=seed)
+    rng = np.random.default_rng(seed=seed)
     ordered_array = _ordered_array(
         nrow=n_ordered_samples,
         ncol=n_genes_ordered,
         dist=dist,
         col_shuffle=shuffle_genes,
-        rng_generator=rng_generator,
+        rng=rng,
     )
     unordered_array = _unordered_array(
         nrow=n_unordered_samples,
         ncol=n_genes_ordered,
         dist=dist,
-        rng_generator=rng_generator,
+        rng=rng,
     )
     ordered_genes_array = np.vstack((ordered_array, unordered_array))
     if shuffle_samples:
-        samples_shuffled = rng_generator.permuted(
+        samples_shuffled = rng.permuted(
             list(range(n_ordered_samples + n_unordered_samples))
         )
         ordered_samples = samples_shuffled[:n_ordered_samples]
@@ -95,13 +115,11 @@ def _generate_rank_entropy_data(
         nrow=n_ordered_samples + n_unordered_samples,
         ncol=n_genes_unordered,
         dist=dist,
-        rng_generator=rng_generator,
+        rng=rng,
     )
     res_array = np.hstack((ordered_genes_array, unordered_genes_array))
     if shuffle_genes:
-        genes_shuffled = rng_generator.permuted(
-            list(range(n_genes_ordered + n_genes_unordered))
-        )
+        genes_shuffled = rng.permuted(list(range(n_genes_ordered + n_genes_unordered)))
         ordered_genes = genes_shuffled[:n_genes_ordered]
         unordered_genes = genes_shuffled[n_genes_ordered:]
         res_array[:, ordered_genes] = ordered_genes_array
@@ -111,6 +129,10 @@ def _generate_rank_entropy_data(
         unordered_genes = np.array(
             range(n_genes_ordered, n_genes_unordered + n_genes_ordered)
         )
+    if noise_dist is not None:
+        res_array = _noise_addition(res_array, dist=noise_dist, rng=rng)
+    if noise_swaps is not None:
+        res_array = _noise_swap(res_array, swaps=noise_swaps, rng=rng)
     return (
         res_array,
         ordered_samples,
@@ -123,26 +145,59 @@ def _generate_rank_entropy_data(
 # endregion Main Function
 
 
+def _noise_addition(
+    array: Array2D,
+    dist: Distribution,
+    rng: Optional[np.random.Generator] = None,
+) -> Array2D:
+    """
+    Add some random noise to the array
+    """
+    noise = dist.rvs(size=array.shape, random_state=rng)
+    return array + noise
+
+
+def _noise_swap(
+    array: Array2D, swaps: Union[int, float], rng: np.random.Generator
+) -> Array2D:
+    """
+    Randomly swap entried in the array
+    """
+    if swaps <= 0:
+        return array
+    if 0 < swaps <= 1:
+        swaps: int = functools.reduce(lambda a, b: a * b, array.shape)
+    # get the size of the array
+    rows, cols = array.shape
+    for _ in range(int(swaps)):
+        # Pick a random row
+        row = rng.integers(0, rows)
+        # Pick two elements to swap
+        elems = rng.integers(0, cols, size=2)
+        a, b = elems[0], elems[1]
+        # Perform the swap
+        array[row, a], array[row, b] = array[row, b], array[row, a]
+    return array
+
+
 # region Unordered
 def _unordered_vector(
     size: int,
     dist: Distribution,
-    rng_generator: np.random.Generator = np.random.default_rng(),
+    rng: np.random.Generator = np.random.default_rng(),
 ) -> np.ndarray:
-    return dist.rvs(size, random_state=rng_generator)
+    return dist.rvs(size, random_state=rng)
 
 
 def _unordered_array(
     nrow: int,
     ncol: int,
     dist: Distribution,
-    rng_generator: np.random.Generator = np.random.default_rng(),
+    rng: np.random.Generator = np.random.default_rng(),
 ) -> np.ndarray:
     res_array = np.zeros((nrow, ncol), dtype=dist.rvs(0).dtype)
     for row in range(nrow):
-        res_array[row, :] = _unordered_vector(
-            size=ncol, dist=dist, rng_generator=rng_generator
-        )
+        res_array[row, :] = _unordered_vector(size=ncol, dist=dist, rng=rng)
     return res_array
 
 
@@ -153,9 +208,9 @@ def _unordered_array(
 def _ordered_vector(
     size: int,
     dist: Distribution,
-    rng_generator: np.random.Generator = np.random.default_rng(),
+    rng: np.random.Generator = np.random.default_rng(),
 ) -> np.ndarray:
-    return np.sort(_unordered_vector(size, dist, rng_generator=rng_generator))
+    return np.sort(_unordered_vector(size, dist, rng=rng))
 
 
 def _ordered_array(
@@ -163,15 +218,13 @@ def _ordered_array(
     ncol: int,
     dist: Distribution,
     col_shuffle: bool = True,
-    rng_generator: np.random.Generator = np.random.default_rng(),
+    rng: np.random.Generator = np.random.default_rng(),
 ) -> np.ndarray:
     res_array = np.zeros((nrow, ncol), dtype=dist.rvs(0).dtype)
     for row in range(nrow):
-        res_array[row, :] = _ordered_vector(
-            size=ncol, dist=dist, rng_generator=rng_generator
-        )
+        res_array[row, :] = _ordered_vector(size=ncol, dist=dist, rng=rng)
     if col_shuffle and ncol != 0:
-        new_col_order = rng_generator.permuted(list(range(ncol)))
+        new_col_order = rng.permuted(list(range(ncol)))
         res_array = res_array[:, new_col_order]
     return res_array
 
