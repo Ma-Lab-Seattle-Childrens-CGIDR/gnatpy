@@ -1,6 +1,10 @@
 # Imports
 # Standard Library Imports
+from __future__ import annotations
+
+
 import unittest
+import itertools
 
 # External Imports
 import numpy as np
@@ -10,6 +14,7 @@ from scipy.stats import norm
 from gnatpy.crane_functions import (
     crane_gene_set_entropy,
     crane_gene_set_classification,
+    crane_multiway_classification,
     _crane_differential_entropy,
     _rank_array,
     _rank_grouping_score,
@@ -38,7 +43,7 @@ class TestCraneHelperFunctions(unittest.TestCase):
                 [1, 2, 3, 4, 5],
             ]
         )
-        test_centroid = _rank_centroid(test_array)
+        test_centroid = _rank_centroid(_rank_array(test_array))
         self.assertTupleEqual(test_centroid.shape, (1, 5))
         np.testing.assert_array_almost_equal(
             test_centroid, np.array([1.0, 0.8, 0.6, 0.4, 0.2]).reshape(1, -1)
@@ -52,7 +57,7 @@ class TestCraneHelperFunctions(unittest.TestCase):
                 [1, 2, 3, 4, 5],
             ]
         )
-        test_centroid = _rank_centroid(test_array)
+        test_centroid = _rank_centroid(_rank_array(test_array))
         np.testing.assert_array_almost_equal(
             test_centroid,
             np.array([(3.0 + 0.8) / 4, (3 * 0.8 + 1.0) / 4, 0.6, 0.4, 0.2]).reshape(
@@ -63,7 +68,7 @@ class TestCraneHelperFunctions(unittest.TestCase):
         # Test random array
         rng = np.random.default_rng(51928)
         test_array = rng.uniform(low=0, high=1, size=10 * 20).reshape(10, 20)
-        test_centroid = _rank_centroid(test_array)
+        test_centroid = _rank_centroid(_rank_array(test_array))
         self.assertTupleEqual(test_centroid.shape, (1, 20))
         # Expected mean
         expected_mean = np.mean(1 - (np.arange(20) / 20))
@@ -73,19 +78,20 @@ class TestCraneHelperFunctions(unittest.TestCase):
 
     def test_rank_grouping_score(self):
         test_array = np.arange(20).reshape(4, 5)
-        test_grouping_score = _rank_grouping_score(test_array)
+        test_grouping_score = _rank_grouping_score(_rank_array(test_array))
         self.assertAlmostEqual(test_grouping_score, 0.0)
 
         rng = np.random.default_rng(123456)
 
         test_array = rng.uniform(0, 1, size=4 * 5).reshape(4, 5)
-        test_grouping_score = _rank_grouping_score(test_array)
+        test_grouping_score = _rank_grouping_score(_rank_array(test_array))
         self.assertGreater(test_grouping_score, 0.2)
 
         rand_array = rng.uniform(0, 1, size=4 * 5).reshape(4, 5)
         ord_array = np.arange(20).reshape(4, 5)
         self.assertGreater(
-            _rank_grouping_score(rand_array), _rank_grouping_score(ord_array)
+            _rank_grouping_score(_rank_array(rand_array)),
+            _rank_grouping_score(_rank_array(ord_array)),
         )
 
     def test_crane_differential_entropy(self):
@@ -426,6 +432,124 @@ class TestCraneClassification(unittest.TestCase):
 
         # This classifier should not be perfect
         self.assertLess(np.equal(y_pred, y_test).mean(), 0.7)
+
+
+class TestCraneMultiway(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.num_genes = 10
+        cls.num_samples_similar = [10, 10, 5]
+        cls.num_samples_disimilar = [10]
+        # Generate test data for the similar samples
+        test_samples = []
+        (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=sum(cls.num_samples_similar),
+            n_unordered_samples=0,
+            n_genes_ordered=cls.num_genes,
+            n_genes_unordered=0,
+            dist=norm(loc=100, scale=25),
+            noise_dist=None,
+            noise_swaps=0.0,
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=1236871254,
+        )
+        test_samples.append(expr_arr)
+        (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=0,
+            n_unordered_samples=sum(cls.num_samples_disimilar),
+            n_genes_ordered=0,
+            n_genes_unordered=cls.num_genes,
+            dist=norm(loc=100, scale=25),
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=1236871254,
+        )
+        test_samples.append(expr_arr)
+        # Combine the samples together
+        cls.test_diff_samples = np.vstack(test_samples)
+        # Create an array of sample groups
+        sample_groups = []
+        start_idx = 0
+        for s in itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar):
+            sample_groups.append(np.array(list(range(start_idx, start_idx + s))))
+            start_idx += s
+        cls.test_sample_groups = sample_groups
+
+        # Create another sample set that is fully ordered, other
+        # than some noise
+        (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=sum(
+                itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar)
+            ),
+            n_unordered_samples=0,
+            n_genes_ordered=cls.num_genes,
+            n_genes_unordered=0,
+            dist=norm(loc=100, scale=25),
+            noise_dist=norm(loc=0, scale=2),
+            noise_swaps=None,
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=3183658319,
+        )
+        cls.test_ordered_samples = expr_arr
+
+        # And another one which is fully disordered
+        (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=0,
+            n_unordered_samples=sum(
+                itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar)
+            ),
+            n_genes_ordered=cls.num_genes,
+            n_genes_unordered=0,
+            dist=norm(loc=100, scale=25),
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=1082536,
+        )
+        cls.test_unordered_samples = expr_arr
+
+        # Also, the gene network
+        cls.gene_network = np.array(list(range(cls.num_genes)))
+
+    def test_crane_multiway_classification(self):
+        _, pvalue = crane_multiway_classification(
+            expression_data=self.test_diff_samples[:, 0:6],
+            sample_groups=self.test_sample_groups,
+            gene_network=self.gene_network[0:6],
+            kernel_density_estimate=True,
+            iterations=1_000,
+            replace=True,
+            processes=1,
+        )
+        # Ensure that DIRAC multiway spots the differently ordered group
+        self.assertLessEqual(pvalue, 0.05)
+
+    def test_crane_multiway_all_same_ordered(self):
+        _, pvalue = crane_multiway_classification(
+            expression_data=self.test_ordered_samples,
+            sample_groups=self.test_sample_groups,
+            gene_network=self.gene_network,
+            kernel_density_estimate=True,
+            iterations=1_000,
+            replace=True,
+            processes=1,
+        )
+        # Ensure that DIRAC multiway spots the differently ordered group
+        self.assertGreaterEqual(pvalue, 0.5)
+
+    def test_crane_multiway_all_random(self):
+        _, pvalue = crane_multiway_classification(
+            expression_data=self.test_unordered_samples,
+            sample_groups=self.test_sample_groups,
+            gene_network=self.gene_network,
+            kernel_density_estimate=True,
+            iterations=1_000,
+            replace=True,
+            processes=1,
+        )
+        # Ensure that DIRAC multiway spots the differently ordered group
+        self.assertGreaterEqual(pvalue, 0.3)
 
 
 if __name__ == "__main__":
