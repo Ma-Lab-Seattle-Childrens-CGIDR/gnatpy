@@ -264,107 +264,112 @@ def _dirac_classification_rate(a: Array2D, b: Array2D) -> float:
 # region DIRAC multiway
 
 
-# def dirac_multiway_classification(
-#     expression_data: Union[Array2D, pd.DataFrame],
-#     sample_groups: Union[Iterable[Array1D], Iterable[Iterable[Hashable]]],
-#     gene_network: Union[Array1D, Iterable[Hashable]],
-#     kernel_density_estimate: bool = True,
-#     bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
-#     iterations: int = 1_000,
-#     replace: bool = True,
-#     seed: Optional[int] = None,
-#     processes: int = -1,
-# ) -> Tuple[float, float]:
-#     """
-#     Calculate the DIRAC multiway rank classification, an extension of
-#     DIRAC classification rate to more than 2 groups
-#
-#     Parameters
-#     ----------
-#     expression_data : Array2D or pd.DataFrame
-#         Gene expression data, either a numpy array or a pandas
-#         dataframe, with rows representing different samples, and
-#         columns representing different genes
-#     sample_groups : Iterable of Array1D or Iterable of Iterable of Hashable
-#         The sample groups to compare, can be an iterable of numpy arrays with
-#         integer indices, or an iterable of iterables of values used to index a pandas
-#         DataFrame (if the expression data is a DataFrame)
-#     gene_network : Array1D or Iterable of Hashable
-#         Which genes belong to the gene network, can be a numpy array with
-#         integer indices, or an iterable of values used to index a pandas
-#         DataFrame (if the expression data is a DataFrame)
-#     kernel_density_estimate : bool
-#         Whether to use a kernel density estimate for calculating the
-#         p-value. If True, will use a Gaussian Kernel Density Estimate,
-#         if False will use an empirical CDF
-#     bw_method : Optional[Union[str|float|Callable[[gaussian_kde], float]]]
-#         Bandwidth method, see `scipy.stats.gaussian_kde <https://docs.sc
-#         ipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.h
-#         tml>`_ for details
-#     iterations : int
-#         Number of iterations to perform during bootstrapping the null
-#         distribution
-#     replace : bool
-#         Whether to sample with replacement when randomly sampling from
-#         the sample groups during bootstrapping
-#     seed : int
-#         Seed to use for the random number generation during
-#         bootstrapping
-#     processes : int
-#         Number of processes to use during the bootstrapping, default 1
-#
-#     Returns
-#     -------
-#     Tuple of (float,float)
-#         Tuple of the multiway DIRAC statistic, and the significance level
-#         found via bootstrapping
-#     """
-#     return _bootstrap_rank_entropy_p_value(
-#         samples_array=expression_data,
-#         sample_groups=sample_groups,
-#         gene_network=gene_network,
-#         rank_entropy_fun=_dirac_multiway,
-#         kernel_density_estimate=kernel_density_estimate,
-#         bw_method=bw_method,
-#         iterations=iterations,
-#         replace=replace,
-#         seed=seed,
-#         processes=processes,
-#     )
-#
-#
-# def _dirac_multiway(*arrays: Array2D) -> float:
-#     # Find the rank arrays for each group
-#     rank_arrays = [_rank_array(a) for a in arrays]
-#     # Find the rank templates for each group
-#     rank_templates = [_rank_template(ra) for ra in rank_arrays]
-#     rank_templates_array = np.vstack(rank_templates)
-#     # Find the "grand" template
-#     grand_template = _rank_template(np.vstack(rank_arrays))
-#     # Find the weighted rank convervation index
-#     weights = np.array(list(map(lambda a: a.shape[0], arrays)))
-#     between_group_differences = (
-#         _rank_mismatching_scores(rank_templates_array, grand_template) * weights
-#     ).sum()
-#     # Divide by the degrees of freedom (one less than the number of groups)
-#     between_group_differences /= len(arrays) - 1
-#     # Find the within group differences
-#     within_group_differences = 0.0
-#     for rank_array, rank_template in zip(rank_arrays, rank_templates):
-#         within_group_differences += _rank_mismatching_scores(
-#             rank_array, rank_template
-#         ).sum()
-#     # Divide by the degrees of freedom (The total number of samples minus the
-#     # number of groups)
-#     within_group_differences /= sum(map(lambda a: a.shape[0], arrays)) - len(arrays)
-#     return between_group_differences / within_group_differences
-#
-#
-# # endregion DIRAC multiway
-#
-#
-# # NOTE: Multiway DIRAC:
-# # 1.) Find rank templates for each group, and all samples combined
-# # 2.) Find weighted sum (weighted by sample count) of matches from group templates to overall templates
-# # 3.) Find sum of matches from each sample to its own groups template
-# # 4.) The statistic is then the ratio of these two, between group mismatches / within group mismatches
+def dirac_multiway_classification(
+    expression_data: Union[Array2D, pd.DataFrame],
+    sample_groups: Union[Iterable[Array1D], Iterable[Iterable[Hashable]]],
+    gene_network: Union[Array1D, Iterable[Hashable]],
+    kernel_density_estimate: bool = True,
+    bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
+    iterations: int = 1_000,
+    replace: bool = True,
+    seed: Optional[int] = None,
+    processes: int = -1,
+) -> Tuple[float, float]:
+    """
+    Calculate the DIRAC multiway rank classification, an extension of
+    DIRAC classification rate to more than 2 groups
+
+    Parameters
+    ----------
+    expression_data : Array2D or pd.DataFrame
+        Gene expression data, either a numpy array or a pandas
+        dataframe, with rows representing different samples, and
+        columns representing different genes
+    sample_groups : Iterable of Array1D or Iterable of Iterable of Hashable
+        The sample groups to compare, can be an iterable of numpy arrays with
+        integer indices, or an iterable of iterables of values used to index a pandas
+        DataFrame (if the expression data is a DataFrame)
+    gene_network : Array1D or Iterable of Hashable
+        Which genes belong to the gene network, can be a numpy array with
+        integer indices, or an iterable of values used to index a pandas
+        DataFrame (if the expression data is a DataFrame)
+    kernel_density_estimate : bool
+        Whether to use a kernel density estimate for calculating the
+        p-value. If True, will use a Gaussian Kernel Density Estimate,
+        if False will use an empirical CDF
+    bw_method : Optional[Union[str|float|Callable[[gaussian_kde], float]]]
+        Bandwidth method, see `scipy.stats.gaussian_kde <https://docs.sc
+        ipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.h
+        tml>`_ for details
+    iterations : int
+        Number of iterations to perform during bootstrapping the null
+        distribution
+    replace : bool
+        Whether to sample with replacement when randomly sampling from
+        the sample groups during bootstrapping
+    seed : int
+        Seed to use for the random number generation during
+        bootstrapping
+    processes : int
+        Number of processes to use during the bootstrapping, default 1
+
+    Returns
+    -------
+    Tuple of (float,float)
+        Tuple of the multiway DIRAC statistic, and the significance level
+        found via bootstrapping
+    """
+    return _bootstrap_rank_entropy_p_value(
+        samples_array=expression_data,
+        sample_groups=sample_groups,
+        gene_network=gene_network,
+        rank_entropy_fun=_dirac_multiway,
+        kernel_density_estimate=kernel_density_estimate,
+        bw_method=bw_method,
+        iterations=iterations,
+        replace=replace,
+        seed=seed,
+        processes=processes,
+    )
+
+
+def _dirac_multiway(*arrays: Array2D) -> float:
+    # Start by finding the mismatch score between a shared template and
+    # all individual samples,
+    # and then also find this for each group
+
+    # Combine all the samples into a single array
+    combined_samples = np.vstack(arrays)
+    # Find the rank array for all of the samples
+    combined_rank_array = _rank_array(combined_samples)
+    # Find the mismatch score between this combined rank array and all the individual samples
+    combined_mismatch = _rank_mismatching_scores(
+        combined_rank_array, _rank_template(combined_rank_array)
+    ).sum()
+
+    # Now find the gruopwise mismatch scores
+    groupwise_mismatch = 0.0
+    cur_idx = 0
+    for a in arrays:
+        # Get the rank array from the combined_rank_array to avoid recalculating
+        rank_array = combined_rank_array[cur_idx : (cur_idx + a.shape[0])]
+        cur_idx += a.shape[0]
+        # Find the mismatch score
+        groupwise_mismatch += _rank_mismatching_scores(
+            rank_array, _rank_template(rank_array)
+        ).sum()
+
+    # The statistic is the ratio between these two values
+    if groupwise_mismatch == 0.0:
+        return 0.0
+    return combined_mismatch / groupwise_mismatch
+
+
+# endregion DIRAC multiway
+
+
+# NOTE: Multiway DIRAC:
+# 1.) Find rank templates for each group, and all samples combined
+# 2.) Find weighted sum (weighted by sample count) of matches from group templates to overall templates
+# 3.) Find sum of matches from each sample to its own groups template
+# 4.) The statistic is then the ratio of these two, between group mismatches / within group mismatches
