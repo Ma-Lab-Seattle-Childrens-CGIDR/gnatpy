@@ -17,6 +17,10 @@
   from [SciPy](https://scipy.org/),
   licensed under a [BSD-3-Clause licensed](https://github.com/scipy/scipy/blob/main/LICENSE.txt)
   which is also reproduced in the License file.
+- Added initial implementation of a multi-sample version of the DIRAC
+  gene set classification metric. Evaluates the "mismatch" score across
+  all samples, and within groups, with a statistic that is the ratio
+  of these two values.
 
 ## Release 0.2.0
 
