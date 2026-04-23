@@ -3,16 +3,16 @@
 <!--toc:start-->
 
 - [Changelog](#changelog)
-  - [Release DEV](#release-dev)
+  - [Release 0.3.0](#release-030)
   - [Release 0.2.0](#release-020)
   - [Release 0.1.0](#release-010)
 
 <!--toc:end-->
 
-## Release DEV
+## Release 0.3.0
 
 - Added a rank normalization step to CRANE prior to centroid calculation
-- Added a function for calculating the kendalltau correlation without
+- Added a function for calculating the Kendall-Tau correlation without
   calculating the p-value, the code is taken with modification
   from [SciPy](https://scipy.org/),
   licensed under a [BSD-3-Clause licensed](https://github.com/scipy/scipy/blob/main/LICENSE.txt)
