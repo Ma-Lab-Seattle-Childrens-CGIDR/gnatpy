@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Callable, Hashable, Iterable, Optional, Tuple, Union
 
 # External Imports
+import anndata as ad
 import joblib
 import numpy as np
 import pandas as pd
@@ -19,11 +20,12 @@ from gnatpy.gnatpy_types import Array1D, Array2D, EntropyFunction
 
 # region Main Function
 def _bootstrap_rank_entropy_p_value(
-    samples_array: Array2D | np.typing.ArrayLike | pd.DataFrame,
+    samples_array: Array2D | np.typing.ArrayLike | pd.DataFrame | ad.AnnData,
     sample_groups: Iterable[Array1D] | Iterable[Iterable[Hashable]],
     gene_network: Array1D | Iterable[Hashable],
     rank_entropy_fun: EntropyFunction,
     rank_fun: Optional[Callable[[Array2D], Array2D]] = None,
+    layer: Optional[str] = None,
     kernel_density_estimate: bool = True,
     bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
     iterations: int = 1_000,
@@ -53,6 +55,8 @@ def _bootstrap_rank_entropy_p_value(
     rank_fun : Callable[[Array2D], Array2D], optional
         Optional function which will create the ranked arrays prior to
         perfoming the boostrapping. It is called on the inputs
+    layer : str, optional
+        Layer containing the expression data in an AnnData object
     kernel_density_estimate : bool
         Whether to use a kernel density estimate for calculating the
         p-value. If True, will use a Gaussian Kernel Density Estimate,
@@ -93,6 +97,20 @@ def _bootstrap_rank_entropy_p_value(
         samples_array = samples_array.loc[:, gene_network]
         # Get a numpy array from the dataframe
         samples_array = samples_array.to_numpy()
+    elif isinstance(samples_array, ad.AnnData):
+        sample_arrays_list = []
+        sample_groups = []
+        sample_group_sizes = []
+        starting_idx = 0
+        for sg in sample_groups:
+            array = samples_array[sg, gene_network].to_df(layer=layer).to_numpy()
+            size = array.shape[0]
+            sample_arrays_list.append(array)
+            sample_group_sizes.append(size)
+            sample_groups.append(list(range(starting_idx, starting_idx + size)))
+            starting_idx += size
+        samples_array = np.concatenate(*sample_arrays_list, axis=0)
+
     else:
         samples_array = np.array(samples_array)
         sample_groups = [np.array(s).ravel() for s in sample_groups]
