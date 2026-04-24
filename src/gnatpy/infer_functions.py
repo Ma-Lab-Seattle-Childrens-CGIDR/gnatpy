@@ -4,18 +4,21 @@
 # Standard Library Imports
 from __future__ import annotations
 
-from typing import Callable, Optional, Tuple, Union
+from typing import cast, Callable, Optional, Tuple, Union
 
 # Enternal Imports
 import numpy as np
 import pandas as pd
-from scipy.stats import gaussian_kde, rankdata
+from scipy.stats import gaussian_kde
+from scipy import special
+
 
 # Local Imports
+import gnatpy.dirac_functions as dirac
 from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
-from gnatpy.gnatpy_types import Array1D, Array2D
+from gnatpy.gnatpy_types import Array2D
 
 
 # region Main Functions
@@ -105,21 +108,18 @@ def infer_gene_set_entropy(
 # region Helper Functions
 
 
-def _vector_entropy(in_vec: Array1D) -> float:
-    _, count = np.unique(in_vec, return_counts=True)
-    tot = np.sum(count)
-    p_x = count / tot
-    log_p_x = np.log(p_x)
-    return -np.sum(np.multiply(p_x, log_p_x))
-
-
-def _rank_array_entropy(in_array: Array2D) -> float:
-    rank_array = rankdata(in_array, method="average", nan_policy="omit", axis=1)
-    return np.apply_along_axis(_vector_entropy, axis=0, arr=rank_array).mean()
+def _pairwise_rank_entropy(rank_array: Array2D) -> float:
+    # Get the DIRAC rank template matrix, and calculate the frequency
+    # of 1's in each column
+    freqs = np.mean(rank_array, axis=0)
+    return cast(float, np.mean(special.entr(freqs) + special.entr(1 - freqs)))
 
 
 def _infer_differential_entropy(a: Array2D, b: Array2D) -> float:
-    return np.abs(_rank_array_entropy(a) - _rank_array_entropy(b))
+    return np.abs(
+        _pairwise_rank_entropy(dirac._rank_array(a))
+        - _pairwise_rank_entropy(dirac._rank_array(b))
+    )
 
 
 # endregion Helper Functions
