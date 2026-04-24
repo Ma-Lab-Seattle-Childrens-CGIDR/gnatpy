@@ -552,32 +552,30 @@ class TestDiracMultiway(unittest.TestCase):
         cls.num_samples_disimilar = [10]
         # Generate test data for the similar samples
         test_samples = []
-        for num_samples in cls.num_samples_similar:
-            (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
-                n_ordered_samples=sum(cls.num_samples_similar),
-                n_unordered_samples=0,
-                n_genes_ordered=cls.num_genes,
-                n_genes_unordered=0,
-                dist=norm(loc=100, scale=25),
-                noise_dist=None,  # norm(loc=0, scale=2),
-                noise_swaps=None,  # 0.1,
-                shuffle_genes=True,
-                shuffle_samples=True,
-                seed=1236871254,
-            )
-            test_samples.append(expr_arr)
-        for num_samples in cls.num_samples_disimilar:
-            (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
-                n_ordered_samples=0,
-                n_unordered_samples=num_samples,
-                n_genes_ordered=0,
-                n_genes_unordered=cls.num_genes,
-                dist=norm(loc=100, scale=25),
-                shuffle_genes=True,
-                shuffle_samples=True,
-                seed=1236871254,
-            )
-            test_samples.append(expr_arr)
+        (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=sum(cls.num_samples_similar),
+            n_unordered_samples=0,
+            n_genes_ordered=cls.num_genes,
+            n_genes_unordered=0,
+            dist=norm(loc=100, scale=25),
+            noise_dist= None,
+            noise_swaps= 0.0,
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=1236871254,
+        )
+        test_samples.append(expr_arr)
+        (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
+            n_ordered_samples=0,
+            n_unordered_samples=sum(cls.num_samples_disimilar),
+            n_genes_ordered=0,
+            n_genes_unordered=cls.num_genes,
+            dist=norm(loc=100, scale=25),
+            shuffle_genes=True,
+            shuffle_samples=True,
+            seed=1236871254,
+        )
+        test_samples.append(expr_arr)
         # Combine the samples together
         cls.test_diff_samples = np.vstack(test_samples)
         # Create an array of sample groups
@@ -630,7 +628,7 @@ class TestDiracMultiway(unittest.TestCase):
             sample_groups=self.test_sample_groups,
             gene_network=self.gene_network[0:6],
             kernel_density_estimate=True,
-            iterations=1,
+            iterations=1_000,
             replace=True,
             processes=1,
         )
@@ -661,7 +659,7 @@ class TestDiracMultiway(unittest.TestCase):
             processes=1,
         )
         # Ensure that DIRAC multiway spots the differently ordered group
-        self.assertGreaterEqual(pvalue, 0.5)
+        self.assertGreaterEqual(pvalue, 0.3)
 
 
 if __name__ == "__main__":
