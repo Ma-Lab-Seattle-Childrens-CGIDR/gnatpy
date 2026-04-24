@@ -98,9 +98,15 @@ class TestCraneHelperFunctions(unittest.TestCase):
         rng = np.random.default_rng(12312941024)
         test_a = np.arange(20).reshape(4, 5)
         test_b = rng.uniform(0, 1, size=4 * 5).reshape(4, 5)
-        self.assertGreater(_crane_differential_entropy(test_a, test_b), 0.0)
-        self.assertAlmostEqual(_crane_differential_entropy(test_a, test_a), 0.0)
-        self.assertAlmostEqual(_crane_differential_entropy(test_b, test_b), 0.0)
+        self.assertGreater(
+            _crane_differential_entropy(_rank_array(test_a), _rank_array(test_b)), 0.0
+        )
+        self.assertAlmostEqual(
+            _crane_differential_entropy(_rank_array(test_a), _rank_array(test_a)), 0.0
+        )
+        self.assertAlmostEqual(
+            _crane_differential_entropy(_rank_array(test_b), _rank_array(test_b)), 0.0
+        )
 
 
 class TestCraneGeneSetEntropy(unittest.TestCase):
@@ -282,14 +288,14 @@ class TestCraneClassification(unittest.TestCase):
 
     def test_crane_classification_rate(self):
         class_rate_ordered = crane_functions._crane_classification_rate(
-            self.good_class_data_X[: self.num_samples_g1, :],
-            self.good_class_data_X[self.num_samples_g1 :, :],
+            _rank_array(self.good_class_data_X[: self.num_samples_g1, :]),
+            _rank_array(self.good_class_data_X[self.num_samples_g1 :, :]),
         )
         self.assertAlmostEqual(class_rate_ordered, 1.0)
 
         class_rate_disordered = crane_functions._crane_classification_rate(
-            self.bad_class_data_X[: self.num_samples_g1, :],
-            self.bad_class_data_X[self.num_samples_g1 :, :],
+            _rank_array(self.bad_class_data_X[: self.num_samples_g1, :]),
+            _rank_array(self.bad_class_data_X[self.num_samples_g1 :, :]),
         )
         self.assertLess(class_rate_disordered, 1.0)
 

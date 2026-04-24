@@ -83,6 +83,7 @@ def dirac_gene_set_classification(
         sample_groups=[sample_group1, sample_group2],
         gene_network=gene_network,
         rank_entropy_fun=_dirac_classification_rate,  # type: ignore
+        rank_fun=_rank_array,
         kernel_density_estimate=kernel_density_estimate,
         bw_method=bw_method,
         iterations=iterations,
@@ -155,6 +156,7 @@ def dirac_gene_set_entropy(
         sample_groups=[sample_group1, sample_group2],
         gene_network=gene_network,
         rank_entropy_fun=_dirac_differential_entropy,  # type:ignore
+        rank_fun=_rank_array,
         kernel_density_estimate=kernel_density_estimate,
         bw_method=bw_method,
         iterations=iterations,
@@ -212,10 +214,9 @@ def _rank_entropy(
     return _rank_mismatching_scores(rank_array, rank_template).mean()
 
 
-def _dirac_differential_entropy(a: Array2D, b: Array2D) -> float:
+def _dirac_differential_entropy(rank_array_a: Array2D, rank_array_b: Array2D) -> float:
     return np.abs(
-        _rank_conservation_index(_rank_array(a))
-        - _rank_conservation_index(_rank_array(b))
+        _rank_conservation_index(rank_array_a) - _rank_conservation_index(rank_array_b)
     )
 
 
@@ -224,11 +225,8 @@ def _dirac_differential_entropy(a: Array2D, b: Array2D) -> float:
 # region classification
 
 
-def _dirac_classification_rate(a: Array2D, b: Array2D) -> float:
+def _dirac_classification_rate(rank_array_a: Array2D, rank_array_b: Array2D) -> float:
     # Find the rank Templates
-    rank_array_a = _rank_array(a)
-    rank_array_b = _rank_array(b)
-
     rank_template_a = (rank_array_a.mean(axis=0) > 0.5).astype(int).reshape(1, -1)
     rank_template_b = (rank_array_b.mean(axis=0) > 0.5).astype(int).reshape(1, -1)
 
@@ -258,7 +256,7 @@ def _dirac_classification_rate(a: Array2D, b: Array2D) -> float:
     )
 
     # Calculate the accuracy
-    total_samples = a.shape[0] + b.shape[0]
+    total_samples = rank_array_a.shape[0] + rank_array_b.shape[0]
     correct_samples = (rank_difference_a > 0.0).sum() + (rank_difference_b <= 0.0).sum()
 
     return correct_samples / total_samples

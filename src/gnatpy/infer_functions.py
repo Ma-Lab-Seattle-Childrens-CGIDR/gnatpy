@@ -88,6 +88,7 @@ def infer_gene_set_entropy(
         sample_groups=[sample_group1, sample_group2],
         gene_network=gene_network,
         rank_entropy_fun=_infer_differential_entropy,  # type: ignore
+        rank_fun=_rank_array,
         kernel_density_estimate=kernel_density_estimate,
         bw_method=bw_method,
         iterations=iterations,
@@ -109,9 +110,9 @@ def _pairwise_rank_entropy(rank_array: Array2D) -> float:
     return cast(float, np.mean(special.entr(freqs) + special.entr(1 - freqs)))
 
 
-def _infer_differential_entropy(a: Array2D, b: Array2D) -> float:
+def _infer_differential_entropy(rank_array_a: Array2D, rank_array_b: Array2D) -> float:
     return np.abs(
-        _pairwise_rank_entropy(_rank_array(a)) - _pairwise_rank_entropy(_rank_array(b))
+        _pairwise_rank_entropy(rank_array_a) - _pairwise_rank_entropy(rank_array_b)
     )
 
 

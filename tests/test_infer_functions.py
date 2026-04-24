@@ -11,6 +11,7 @@ from gnatpy.infer_functions import (
     _infer_differential_entropy,
     infer_gene_set_entropy,
 )
+from gnatpy.dirac_functions import _rank_array
 from gnatpy import _datagen
 
 
@@ -19,8 +20,12 @@ class TestInferHelperFunctions(unittest.TestCase):
         test_a = np.arange(20).reshape(4, 5)
         test_b = np.random.rand(4, 5)
         self.assertGreater(_infer_differential_entropy(test_a, test_b), 0.0)
-        self.assertAlmostEqual(_infer_differential_entropy(test_a, test_a), 0.0)
-        self.assertAlmostEqual(_infer_differential_entropy(test_b, test_b), 0.0)
+        self.assertAlmostEqual(
+            _infer_differential_entropy(_rank_array(test_a), _rank_array(test_a)), 0.0
+        )
+        self.assertAlmostEqual(
+            _infer_differential_entropy(_rank_array(test_b), _rank_array(test_b)), 0.0
+        )
 
 
 class TestInferGeneSetEntropy(unittest.TestCase):

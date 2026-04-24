@@ -1,3 +1,5 @@
+# The code for calculating the p-value empirically is modified from SciPy,
+# licensed under the BSD-3-Clause license. See the LICENSE file for more information
 """Bootstrap p-values for the various rank entropy methods"""
 
 # Imports
@@ -21,6 +23,7 @@ def _bootstrap_rank_entropy_p_value(
     sample_groups: Iterable[Array1D] | Iterable[Iterable[Hashable]],
     gene_network: Array1D | Iterable[Hashable],
     rank_entropy_fun: EntropyFunction,
+    rank_fun: Optional[Callable[[Array2D], Array2D]] = None,
     kernel_density_estimate: bool = True,
     bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
     iterations: int = 1_000,
@@ -47,6 +50,9 @@ def _bootstrap_rank_entropy_p_value(
         Function used to calculate the rank entropy difference between
         two sample groups, should take two np.ndarrays as arguments and
         return a float
+    rank_fun : Callable[[Array2D], Array2D], optional
+        Optional function which will create the ranked arrays prior to
+        perfoming the boostrapping. It is called on the inputs
     kernel_density_estimate : bool
         Whether to use a kernel density estimate for calculating the
         p-value. If True, will use a Gaussian Kernel Density Estimate,
@@ -83,15 +89,25 @@ def _bootstrap_rank_entropy_p_value(
             samples_array.index.get_indexer(s).ravel() for s in sample_groups
         ]
         sample_group_sizes = list(map(len, sample_groups))
-        gene_network = samples_array.columns.get_indexer(gene_network)
+        # Filter the array for only the gene network
+        samples_array = samples_array.loc[:, gene_network]
+        # Get a numpy array from the dataframe
         samples_array = samples_array.to_numpy()
     else:
         samples_array = np.array(samples_array)
         sample_groups = [np.array(s).ravel() for s in sample_groups]
         gene_network = np.array(gene_network)
         sample_group_sizes = list(map(len, sample_groups))
+        # Filter the samples array for only the gene network of interest
+        samples_array = samples_array[:, gene_network]
     # Combine sample group indices
     sample_indices = np.concatenate(sample_groups)
+    if rank_fun is None:
+
+        def rank_fun(data: Array2D) -> Array2D:
+            return data
+
+    rank_array = rank_fun(samples_array)
 
     # Create a numpy rng
     rng = np.random.default_rng(seed=seed)
@@ -102,10 +118,9 @@ def _bootstrap_rank_entropy_p_value(
         joblib.Parallel(n_jobs=processes, return_as="generator_unordered")(
             joblib.delayed(_pvalue_worker)(
                 rank_entropy_fun=rank_entropy_fun,
-                samples_array=samples_array,
+                rank_array=rank_array,
                 sample_indices=sample_indices,
                 sample_group_sizes=sample_group_sizes,
-                gene_network=gene_network,
                 replace=replace,
                 seed=rng.integers(low=0, high=np.iinfo(np.intp).max),
             )
@@ -115,11 +130,27 @@ def _bootstrap_rank_entropy_p_value(
         rank_entropy_samples[idx] = entropy
 
     # Calculate the value for the unshuffled array
-    sample_group_arrays = [samples_array[sg][:, gene_network] for sg in sample_groups]
-    rank_entropy = rank_entropy_fun(*sample_group_arrays)
+    sample_group_rank_arrays = [rank_array[sg] for sg in sample_groups]
+    rank_entropy = rank_entropy_fun(*sample_group_rank_arrays)
     if not kernel_density_estimate:
+        # Apply an adjustment based on 'Permutation p-values should never be zero:
+        # calculating exact p-values when permutations are randomly drawn'
+        # First find eps, which is floating point tolerance
+        # Based on Scipy's permutation test implementation
+        # Licensed under the BSD-3-Clause
+        eps = (
+            0
+            if not np.isdtype(rank_entropy_samples.dtype, "real floating")
+            else np.finfo(rank_entropy_samples.dtype).eps * 100
+        )
+        gamma = np.abs(eps * rank_entropy)
+        pvalue = float(
+            np.count_nonzero(rank_entropy_samples >= rank_entropy - gamma) + 1
+        ) / float(iterations + 1)
+
         empirical_cdf = ecdf(rank_entropy_samples)
         pvalue = empirical_cdf.sf.evaluate(rank_entropy)[()]
+        # End of code modified from SciPy
     else:
         kde = gaussian_kde(rank_entropy_samples, bw_method=bw_method)
         pvalue = kde.integrate_box_1d(rank_entropy, np.inf)
@@ -131,10 +162,9 @@ def _bootstrap_rank_entropy_p_value(
 
 def _pvalue_worker(
     rank_entropy_fun: EntropyFunction,
-    samples_array: Array2D,
+    rank_array: Array2D,
     sample_indices: Array1D,
     sample_group_sizes: Array1D,
-    gene_network: Array1D,
     replace: bool,
     seed: int,
 ) -> float:
@@ -146,8 +176,9 @@ def _pvalue_worker(
     Parameters
     ----------
     rank_entropy_fun : EntropyFunction
-        Function which takes two numpy arrays and returns a single float
-    samples_array : Array2D
+        Function which takes two numpy array representing the rank arrays and
+        returns a single float
+    rank_array : Array2D
         The array containing the samples
     sample_indices : Array1D
         The indices for samples. This will be split into
@@ -156,12 +187,16 @@ def _pvalue_worker(
         the samples_array
     sample_group_sizes : Iterable[int]
         The size of the two sample groups
-    gene_network : Array1D
-        Indices for the gene network
     replace : bool
         Whether to sample with replacement
     seed : int
-        The seed for the RNG used for randomly splitting the samples indices into two groups
+        The seed for the RNG used for randomly splitting the samples indices
+        into two groups
+
+    Returns
+    -------
+    rank_entropy : float
+        The rank entropy value of the rank_array
     """
     # Create the random number generator from the seed
     rng = np.random.default_rng(seed=seed)
@@ -180,5 +215,5 @@ def _pvalue_worker(
                 shuffled_sample_indices[cur_idx : cur_idx + sample_group_size]
             )
             cur_idx += sample_group_size
-    sample_arrays = [samples_array[sg][:, gene_network] for sg in sample_groups]
-    return rank_entropy_fun(*sample_arrays)
+    rank_arrays = [rank_array[sg] for sg in sample_groups]
+    return rank_entropy_fun(*rank_arrays)

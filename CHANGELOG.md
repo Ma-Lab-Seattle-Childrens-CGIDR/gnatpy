@@ -16,6 +16,8 @@
   rather than ranks directly
 - Added wrapper function for finding rank entropy values across a series of
   genes networks and sample groups
+- Updated the method for evaluating the p-value during bootstrapping
+  based on [Phipson, B., & Smyth, G. K. (2010)](https://arxiv.org/abs/1603.05766).
 
 ## Release 0.3.0
 

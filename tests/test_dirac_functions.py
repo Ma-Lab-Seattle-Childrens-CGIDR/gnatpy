@@ -211,7 +211,8 @@ class TestRankFunctions(unittest.TestCase):
         # Check that there is a difference between the rank conservation index of the two arrays
         self.assertGreater(
             dirac_functions._dirac_differential_entropy(
-                low_entropy_test_array, high_entropy_test_array
+                dirac_functions._rank_array(low_entropy_test_array),
+                dirac_functions._rank_array(high_entropy_test_array),
             ),
             0.0,
         )
@@ -392,14 +393,22 @@ class TestDiracClassification(unittest.TestCase):
 
     def test_dirac_classification_rate(self):
         class_rate_ordered = dirac_functions._dirac_classification_rate(
-            self.good_class_data_X[: self.num_samples_g1, :],
-            self.good_class_data_X[self.num_samples_g1 :, :],
+            dirac_functions._rank_array(
+                self.good_class_data_X[: self.num_samples_g1, :]
+            ),
+            dirac_functions._rank_array(
+                self.good_class_data_X[self.num_samples_g1 :, :],
+            ),
         )
         self.assertAlmostEqual(class_rate_ordered, 1.0)
 
         class_rate_disordered = dirac_functions._dirac_classification_rate(
-            self.bad_class_data_X[: self.num_samples_g1, :],
-            self.bad_class_data_X[self.num_samples_g1 :, :],
+            dirac_functions._rank_array(
+                self.bad_class_data_X[: self.num_samples_g1, :]
+            ),
+            dirac_functions._rank_array(
+                self.bad_class_data_X[self.num_samples_g1 :, :]
+            ),
         )
         self.assertLess(class_rate_disordered, 1.0)
 
@@ -558,8 +567,8 @@ class TestDiracMultiway(unittest.TestCase):
             n_genes_ordered=cls.num_genes,
             n_genes_unordered=0,
             dist=norm(loc=100, scale=25),
-            noise_dist= None,
-            noise_swaps= 0.0,
+            noise_dist=None,
+            noise_swaps=0.0,
             shuffle_genes=True,
             shuffle_samples=True,
             seed=1236871254,
