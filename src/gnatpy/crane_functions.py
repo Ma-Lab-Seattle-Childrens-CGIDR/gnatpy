@@ -205,7 +205,7 @@ def _rank_centroid(
 
 def _rank_grouping_score(
     rank_array: Array2D, centroid: Optional[Array1D] = None
-) -> Array1D:
+) -> float:
     if centroid is None:
         centroid = _rank_centroid(rank_array)
     return _centroid_distances(rank_array, centroid).mean()

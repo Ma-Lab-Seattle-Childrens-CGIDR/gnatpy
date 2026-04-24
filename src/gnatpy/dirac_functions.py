@@ -206,6 +206,12 @@ def _rank_conservation_index(
     return _rank_matching_scores(rank_array, rank_template).mean()
 
 
+def _rank_entropy(
+    rank_array: Array2D, rank_template: Optional[Array1D] = None
+) -> float:
+    return _rank_mismatching_scores(rank_array, rank_template).mean()
+
+
 def _dirac_differential_entropy(a: Array2D, b: Array2D) -> float:
     return np.abs(
         _rank_conservation_index(_rank_array(a))

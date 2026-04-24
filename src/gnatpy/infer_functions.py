@@ -14,7 +14,7 @@ from scipy import special
 
 
 # Local Imports
-import gnatpy.dirac_functions as dirac
+from gnatpy.dirac_functions import _rank_array
 from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
@@ -82,12 +82,6 @@ def infer_gene_set_entropy(
     Tuple[float,float]
         Tuple of the difference in information entropy of ranks, and the
         significance level found via bootstrapping
-
-    Notes
-    -----
-    With INFER, having different sized sample groups will artificially inflate the significance of rank entropy
-    differences between the groups of samples. This method should only be used when comparing identical sample
-    sizes.
     """
     return _bootstrap_rank_entropy_p_value(
         samples_array=expression_data,
@@ -117,8 +111,7 @@ def _pairwise_rank_entropy(rank_array: Array2D) -> float:
 
 def _infer_differential_entropy(a: Array2D, b: Array2D) -> float:
     return np.abs(
-        _pairwise_rank_entropy(dirac._rank_array(a))
-        - _pairwise_rank_entropy(dirac._rank_array(b))
+        _pairwise_rank_entropy(_rank_array(a)) - _pairwise_rank_entropy(_rank_array(b))
     )
 
 

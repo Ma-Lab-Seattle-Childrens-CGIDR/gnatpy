@@ -3,11 +3,19 @@
 <!--toc:start-->
 
 - [Changelog](#changelog)
+  - [Release DEV](#release-dev)
   - [Release 0.3.0](#release-030)
   - [Release 0.2.0](#release-020)
   - [Release 0.1.0](#release-010)
 
 <!--toc:end-->
+
+## Release DEV
+
+- Updated INFER method to use entropy of DIRAC style pairwise rank comparisons
+  rather than ranks directly
+- Added wrapper function for finding rank entropy values across a series of
+  genes networks and sample groups
 
 ## Release 0.3.0
 
