@@ -16,29 +16,30 @@
   rather than ranks directly
 - Added wrapper function for finding rank entropy values across a series of
   genes networks and sample groups
-- Updated the method for evaluating the p-value during bootstrapping
-  based on [Phipson, B., & Smyth, G. K. (2010)](https://arxiv.org/abs/1603.05766).
+- Updated the method for evaluating the p-value during bootstrapping based on
+  [Phipson, B., & Smyth, G. K. (2010)](https://arxiv.org/abs/1603.05766).
+- Added wrapper function for finding the difference in two sample groups for a
+  group of gene networks, and calculating the p-values using bootstrapping.
 
 ## Release 0.3.0
 
 - Added a rank normalization step to CRANE prior to centroid calculation
 - Added a function for calculating the Kendall-Tau correlation without
-  calculating the p-value, the code is taken with modification
-  from [SciPy](https://scipy.org/),
-  licensed under a [BSD-3-Clause licensed](https://github.com/scipy/scipy/blob/main/LICENSE.txt)
+  calculating the p-value, the code is taken with modification from
+  [SciPy](https://scipy.org/), licensed under a
+  [BSD-3-Clause licensed](https://github.com/scipy/scipy/blob/main/LICENSE.txt)
   which is also reproduced in the License file.
-- Added initial implementation of a multi-sample version of the DIRAC
-  gene set classification metric. Evaluates the "mismatch" score across
-  all samples, and within groups, with a statistic that is the ratio
-  of these two values.
-- Added initial implementation of a multi-sample version of CRANE
-  gene set classification metric, which compares the distance to
-  an overall rank centroid to that of the within group rank centroids
+- Added initial implementation of a multi-sample version of the DIRAC gene set
+  classification metric. Evaluates the "mismatch" score across all samples, and
+  within groups, with a statistic that is the ratio of these two values.
+- Added initial implementation of a multi-sample version of CRANE gene set
+  classification metric, which compares the distance to an overall rank centroid
+  to that of the within group rank centroids
 
 ## Release 0.2.0
 
-- Moved DIRAC and CRANE classifiers into their own module,
-  and updated them to use the scikit-learn interface
+- Moved DIRAC and CRANE classifiers into their own module, and updated them to
+  use the scikit-learn interface
 
 ## Release 0.1.0
 
