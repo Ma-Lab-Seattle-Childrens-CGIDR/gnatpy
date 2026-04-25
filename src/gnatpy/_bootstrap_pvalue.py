@@ -107,7 +107,7 @@ def _bootstrap_rank_entropy_p_value(
             size = array.shape[0]
             sample_arrays_list.append(array)
             sample_group_sizes.append(size)
-            sample_groups.append(list(range(starting_idx, starting_idx + size)))
+            sample_groups.append(np.array(range(starting_idx, starting_idx + size)))
             starting_idx += size
         samples_array = np.concatenate(*sample_arrays_list, axis=0)
 
