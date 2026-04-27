@@ -11,6 +11,8 @@ __all__ = [
     "infer_gene_set_entropy",
     "CraneClassifier",
     "DiracClassifier",
+    "rank_entropy",
+    "rank_entropy_comparison",
 ]
 from .crane_functions import (
     crane_gene_set_entropy,
@@ -23,3 +25,4 @@ from .dirac_functions import (
 from .race_functions import race_gene_set_entropy
 from .infer_functions import infer_gene_set_entropy
 from .classifier import CraneClassifier, DiracClassifier
+from .wrapper import rank_entropy, rank_entropy_comparison
