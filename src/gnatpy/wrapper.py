@@ -64,6 +64,12 @@ def rank_entropy(
     rank_entropy : pd.DataFrame
         DataFrame with the rank entropy valu es, indexed by sample groups with
         columns for each gene network
+
+    Notes
+    -----
+    The 'DIRAC' method used in this function is altered to return a
+    higher value when the ranks are less consistant (as opposed to the
+    rank convservation index which is higher for less consistant orderings).
     """
     # Create the Results DataFrame
     rank_entropy_df = pd.DataFrame(
@@ -72,13 +78,14 @@ def rank_entropy(
         columns=pd.Index(gene_networks.keys()),
     )
     # Create the method to find the rank entropy
+    method = method.upper()  # type: ignore
     if method == "DIRAC":
 
         def rank_entropy_method(data: Array2D) -> float:
             return dirac._rank_entropy(dirac._rank_array(data))
     elif method == "RACE":
 
-        def rank_entopy_method(data: Array2D) -> float:
+        def rank_entropy_method(data: Array2D) -> float:
             return race._rank_correlation_mean(data)
     elif method == "CRANE":
 
@@ -101,10 +108,10 @@ def rank_entropy(
             gene_network=gn,
             sample_group_name=sg_name,
             gene_network_name=gn_name,
-            rank_entropy_method=rank_entopy_method,
+            rank_entropy_method=rank_entropy_method,
             layer=layer,
         )
-        for (gn, gn_name), (sg, sg_name) in itertools.product(
+        for (gn_name, gn), (sg_name, sg) in itertools.product(
             gene_networks.items(), sample_groups.items()
         )
     ):
@@ -115,10 +122,10 @@ def rank_entropy(
 
 def rank_entropy_comparison(
     data: Union[Array2D, pd.DataFrame, ad.AnnData],
-    sample_group1,
-    sample_group2,
+    sample_groups: list,
     gene_networks: dict[Hashable, Any],
     method: Literal["DIRAC", "INFER", "RACE", "CRANE"] = "DIRAC",
+    layer: Optional[str] = None,
     kernel_density_estimate: bool = True,
     bw_method: Optional[Union[str, float, Callable[[gaussian_kde], float]]] = None,
     iterations: int = 1_000,
@@ -147,6 +154,8 @@ def rank_entropy_comparison(
         of `data`.
     method : {'DIRAC', 'INFER', 'RACE', 'CRANE'}
         The method to use for calculating the rank entropy
+    layer : str, optional
+        Layer containing the expression data in an AnnData object
     kernel_density_estimate : bool
         Whether to use a kernel density estimate for calculating the
         p-value. If True, will use a Gaussian Kernel Density Estimate,
@@ -180,16 +189,16 @@ def rank_entropy_comparison(
         rank_fun = dirac._rank_array
 
     elif method == "RACE":
-        rank_entropy_diff_fun = race._rank_correlation_mean
+        rank_entropy_diff_fun = race._race_differential_entropy
 
         def rank_fun(data: Array2D) -> Array2D:
             return data
     elif method == "CRANE":
-        rank_entropy_diff_fun = (crane._crane_differential_entropy,)
+        rank_entropy_diff_fun = crane._crane_differential_entropy
         rank_fun = crane._rank_array
 
     elif method == "INFER":
-        rank_entropy_diff_fun = infer._pairwise_rank_entropy
+        rank_entropy_diff_fun = infer._infer_differential_entropy
         rank_fun = infer._rank_array
 
     else:
@@ -203,10 +212,11 @@ def rank_entropy_comparison(
     for gene_network_name, gene_network in gene_networks.items():
         stat, pvalue = _bootstrap_rank_entropy_p_value(
             samples_array=data,
-            sample_groups=[sample_group1, sample_group2],
+            sample_groups=sample_groups,
             gene_network=gene_network,
             rank_entropy_fun=rank_entropy_diff_fun,  # type: ignore
             rank_fun=rank_fun,
+            layer=layer,
             kernel_density_estimate=kernel_density_estimate,
             bw_method=bw_method,
             iterations=iterations,

@@ -89,17 +89,17 @@ def _bootstrap_rank_entropy_p_value(
     # Convert dataframe into numpy array
     if isinstance(samples_array, pd.DataFrame):
         # Convert sample groups of labels into integer positions
-        sample_groups = [
+        sample_group_indices = [
             samples_array.index.get_indexer(s).ravel() for s in sample_groups
         ]
-        sample_group_sizes = list(map(len, sample_groups))
+        sample_group_sizes = list(map(len, sample_group_indices))
         # Filter the array for only the gene network
         samples_array = samples_array.loc[:, gene_network]
         # Get a numpy array from the dataframe
         samples_array = samples_array.to_numpy()
     elif isinstance(samples_array, ad.AnnData):
         sample_arrays_list = []
-        sample_groups = []
+        sample_group_indices = []
         sample_group_sizes = []
         starting_idx = 0
         for sg in sample_groups:
@@ -107,19 +107,21 @@ def _bootstrap_rank_entropy_p_value(
             size = array.shape[0]
             sample_arrays_list.append(array)
             sample_group_sizes.append(size)
-            sample_groups.append(np.array(range(starting_idx, starting_idx + size)))
+            sample_group_indices.append(
+                np.array(range(starting_idx, starting_idx + size))
+            )
             starting_idx += size
-        samples_array = np.concatenate(*sample_arrays_list, axis=0)
+        samples_array = np.concatenate(sample_arrays_list, axis=0)
 
     else:
         samples_array = np.array(samples_array)
-        sample_groups = [np.array(s).ravel() for s in sample_groups]
+        sample_group_indices = [np.array(s).ravel() for s in sample_groups]
         gene_network = np.array(gene_network)
-        sample_group_sizes = list(map(len, sample_groups))
+        sample_group_sizes = list(map(len, sample_group_indices))
         # Filter the samples array for only the gene network of interest
         samples_array = samples_array[:, gene_network]
     # Combine sample group indices
-    sample_indices = np.concatenate(sample_groups)
+    sample_indices = np.concatenate(sample_group_indices)
     if rank_fun is None:
 
         def rank_fun(data: Array2D) -> Array2D:
@@ -148,7 +150,7 @@ def _bootstrap_rank_entropy_p_value(
         rank_entropy_samples[idx] = entropy
 
     # Calculate the value for the unshuffled array
-    sample_group_rank_arrays = [rank_array[sg] for sg in sample_groups]
+    sample_group_rank_arrays = [rank_array[sg] for sg in sample_group_indices]
     rank_entropy = rank_entropy_fun(*sample_group_rank_arrays)
     if not kernel_density_estimate:
         # Apply an adjustment based on 'Permutation p-values should never be zero:
