@@ -2,7 +2,7 @@
 name = "gnatpy"
 description = "Analyze Rank Entropy in Python"
 authors = [{ name = "Braden Griebel", email = "bgriebel@uw.edu" }]
-version = "0.3.0"
+version = "0.4.0"
 readme = "README.md"
 keywords = ["entropy", "rank", "gene", "bioinformatics"]
 license = { file = "LICENSE" }

@@ -3,14 +3,14 @@
 <!--toc:start-->
 
 - [Changelog](#changelog)
-  - [Release DEV](#release-dev)
+  - [Release 0.4.0](#release-040)
   - [Release 0.3.0](#release-030)
   - [Release 0.2.0](#release-020)
   - [Release 0.1.0](#release-010)
 
 <!--toc:end-->
 
-## Release DEV
+## Release 0.4.0
 
 - Updated INFER method to use entropy of DIRAC style pairwise rank comparisons
   rather than ranks directly
