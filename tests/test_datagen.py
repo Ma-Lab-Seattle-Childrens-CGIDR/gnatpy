@@ -3,6 +3,7 @@
 import unittest
 
 # External Imports
+import anndata as ad
 import numpy as np
 from scipy.stats import norm, expon, nbinom, geom, beta, rankdata
 
@@ -13,6 +14,7 @@ from gnatpy._datagen import (
     _ordered_vector,
     _unordered_vector,
     _generate_rank_entropy_data,
+    _generate_rank_entropy_anndata,
 )
 
 
@@ -159,8 +161,8 @@ class TestGenerateRankEntropyData(unittest.TestCase):
         ) = _generate_rank_entropy_data(
             n_ordered_samples=n_ordered_samples,
             n_unordered_samples=n_unordered_samples,
-            n_genes_ordered=n_genes_ordered,
-            n_genes_unordered=n_genes_unordered,
+            n_ordered_genes=n_genes_ordered,
+            n_unordered_genes=n_genes_unordered,
             dist=dist,
             shuffle_genes=False,
             shuffle_samples=False,
@@ -195,8 +197,8 @@ class TestGenerateRankEntropyData(unittest.TestCase):
         ) = _generate_rank_entropy_data(
             n_ordered_samples=n_ordered_samples,
             n_unordered_samples=n_unordered_samples,
-            n_genes_ordered=n_genes_ordered,
-            n_genes_unordered=n_genes_unordered,
+            n_ordered_genes=n_genes_ordered,
+            n_unordered_genes=n_genes_unordered,
             dist=dist,
             shuffle_genes=True,
             shuffle_samples=False,
@@ -232,8 +234,8 @@ class TestGenerateRankEntropyData(unittest.TestCase):
         ) = _generate_rank_entropy_data(
             n_ordered_samples=n_ordered_samples,
             n_unordered_samples=n_unordered_samples,
-            n_genes_ordered=n_genes_ordered,
-            n_genes_unordered=n_genes_unordered,
+            n_ordered_genes=n_genes_ordered,
+            n_unordered_genes=n_genes_unordered,
             dist=dist,
             shuffle_genes=False,
             shuffle_samples=True,
@@ -265,8 +267,8 @@ class TestGenerateRankEntropyData(unittest.TestCase):
         ) = _generate_rank_entropy_data(
             n_ordered_samples=n_ordered_samples,
             n_unordered_samples=n_unordered_samples,
-            n_genes_ordered=n_genes_ordered,
-            n_genes_unordered=n_genes_unordered,
+            n_ordered_genes=n_genes_ordered,
+            n_unordered_genes=n_genes_unordered,
             dist=dist,
             shuffle_genes=True,
             shuffle_samples=True,
@@ -281,6 +283,32 @@ class TestGenerateRankEntropyData(unittest.TestCase):
             n_unordered_samples=n_unordered_samples,
             n_genes_ordered=n_genes_ordered,
             n_genes_unordered=n_genes_unordered,
+        )
+
+
+class TestAnnDataGeneration(unittest.TestCase):
+    def test_anndata_generation(self):
+        # Generate the anndata
+        test_adata = _generate_rank_entropy_anndata(
+            n_ordered_samples=10,
+            n_unordered_samples=15,
+            n_ordered_genes=12,
+            n_unordered_genes=13,
+            dist=norm(20, 10),
+        )
+        self.assertIsInstance(test_adata, ad.AnnData)
+        # Subset down and check size
+        self.assertEqual(
+            test_adata[test_adata.obs["sample_type"] == "ordered",].n_obs, 10
+        )
+        self.assertEqual(
+            test_adata[test_adata.obs["sample_type"] == "unordered",].n_obs, 15
+        )
+        self.assertEqual(
+            test_adata[test_adata.var["gene_type"] == "ordered",].n_obs, 12
+        )
+        self.assertEqual(
+            test_adata[test_adata.var["gene_type"] == "unordered",].n_obs, 13
         )
 
 

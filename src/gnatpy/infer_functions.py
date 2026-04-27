@@ -4,18 +4,21 @@
 # Standard Library Imports
 from __future__ import annotations
 
-from typing import Callable, Optional, Tuple, Union
+from typing import cast, Callable, Optional, Tuple, Union
 
 # Enternal Imports
 import numpy as np
 import pandas as pd
-from scipy.stats import gaussian_kde, rankdata
+from scipy.stats import gaussian_kde
+from scipy import special
+
 
 # Local Imports
+from gnatpy.dirac_functions import _rank_array
 from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
-from gnatpy.gnatpy_types import Array1D, Array2D
+from gnatpy.gnatpy_types import Array2D
 
 
 # region Main Functions
@@ -79,18 +82,13 @@ def infer_gene_set_entropy(
     Tuple[float,float]
         Tuple of the difference in information entropy of ranks, and the
         significance level found via bootstrapping
-
-    Notes
-    -----
-    With INFER, having different sized sample groups will artificially inflate the significance of rank entropy
-    differences between the groups of samples. This method should only be used when comparing identical sample
-    sizes.
     """
     return _bootstrap_rank_entropy_p_value(
         samples_array=expression_data,
         sample_groups=[sample_group1, sample_group2],
         gene_network=gene_network,
         rank_entropy_fun=_infer_differential_entropy,  # type: ignore
+        rank_fun=_rank_array,
         kernel_density_estimate=kernel_density_estimate,
         bw_method=bw_method,
         iterations=iterations,
@@ -105,21 +103,17 @@ def infer_gene_set_entropy(
 # region Helper Functions
 
 
-def _vector_entropy(in_vec: Array1D) -> float:
-    _, count = np.unique(in_vec, return_counts=True)
-    tot = np.sum(count)
-    p_x = count / tot
-    log_p_x = np.log(p_x)
-    return -np.sum(np.multiply(p_x, log_p_x))
+def _pairwise_rank_entropy(rank_array: Array2D) -> float:
+    # Get the DIRAC rank template matrix, and calculate the frequency
+    # of 1's in each column
+    freqs = np.mean(rank_array, axis=0)
+    return cast(float, np.mean(special.entr(freqs) + special.entr(1 - freqs)))
 
 
-def _rank_array_entropy(in_array: Array2D) -> float:
-    rank_array = rankdata(in_array, method="average", nan_policy="omit", axis=1)
-    return np.apply_along_axis(_vector_entropy, axis=0, arr=rank_array).mean()
-
-
-def _infer_differential_entropy(a: Array2D, b: Array2D) -> float:
-    return np.abs(_rank_array_entropy(a) - _rank_array_entropy(b))
+def _infer_differential_entropy(rank_array_a: Array2D, rank_array_b: Array2D) -> float:
+    return np.abs(
+        _pairwise_rank_entropy(rank_array_a) - _pairwise_rank_entropy(rank_array_b)
+    )
 
 
 # endregion Helper Functions

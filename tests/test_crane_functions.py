@@ -98,9 +98,15 @@ class TestCraneHelperFunctions(unittest.TestCase):
         rng = np.random.default_rng(12312941024)
         test_a = np.arange(20).reshape(4, 5)
         test_b = rng.uniform(0, 1, size=4 * 5).reshape(4, 5)
-        self.assertGreater(_crane_differential_entropy(test_a, test_b), 0.0)
-        self.assertAlmostEqual(_crane_differential_entropy(test_a, test_a), 0.0)
-        self.assertAlmostEqual(_crane_differential_entropy(test_b, test_b), 0.0)
+        self.assertGreater(
+            _crane_differential_entropy(_rank_array(test_a), _rank_array(test_b)), 0.0
+        )
+        self.assertAlmostEqual(
+            _crane_differential_entropy(_rank_array(test_a), _rank_array(test_a)), 0.0
+        )
+        self.assertAlmostEqual(
+            _crane_differential_entropy(_rank_array(test_b), _rank_array(test_b)), 0.0
+        )
 
 
 class TestCraneGeneSetEntropy(unittest.TestCase):
@@ -115,8 +121,8 @@ class TestCraneGeneSetEntropy(unittest.TestCase):
         ) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=20,
             n_unordered_samples=15,
-            n_genes_ordered=20,
-            n_genes_unordered=25,
+            n_ordered_genes=20,
+            n_unordered_genes=25,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -153,8 +159,8 @@ class TestCraneGeneSetEntropy(unittest.TestCase):
         ) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=20,
             n_unordered_samples=15,
-            n_genes_ordered=20,
-            n_genes_unordered=25,
+            n_ordered_genes=20,
+            n_unordered_genes=25,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -203,8 +209,8 @@ class TestCraneGeneSetEntropy(unittest.TestCase):
         ) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=20,
             n_unordered_samples=15,
-            n_genes_ordered=20,
-            n_genes_unordered=25,
+            n_ordered_genes=20,
+            n_unordered_genes=25,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -232,8 +238,8 @@ class TestCraneClassification(unittest.TestCase):
         (test_expression_data1, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=cls.num_samples_g1,
             n_unordered_samples=0,
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -242,8 +248,8 @@ class TestCraneClassification(unittest.TestCase):
         (test_expression_data2, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=cls.num_samples_g2,
             n_unordered_samples=0,
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -258,8 +264,8 @@ class TestCraneClassification(unittest.TestCase):
         (test_expression_data1, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=0,
             n_unordered_samples=cls.num_samples_g1,
-            n_genes_ordered=0,
-            n_genes_unordered=cls.num_genes,
+            n_ordered_genes=0,
+            n_unordered_genes=cls.num_genes,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -268,8 +274,8 @@ class TestCraneClassification(unittest.TestCase):
         (test_expression_data2, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=0,
             n_unordered_samples=cls.num_samples_g2,
-            n_genes_ordered=0,
-            n_genes_unordered=cls.num_genes,
+            n_ordered_genes=0,
+            n_unordered_genes=cls.num_genes,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -282,14 +288,14 @@ class TestCraneClassification(unittest.TestCase):
 
     def test_crane_classification_rate(self):
         class_rate_ordered = crane_functions._crane_classification_rate(
-            self.good_class_data_X[: self.num_samples_g1, :],
-            self.good_class_data_X[self.num_samples_g1 :, :],
+            _rank_array(self.good_class_data_X[: self.num_samples_g1, :]),
+            _rank_array(self.good_class_data_X[self.num_samples_g1 :, :]),
         )
         self.assertAlmostEqual(class_rate_ordered, 1.0)
 
         class_rate_disordered = crane_functions._crane_classification_rate(
-            self.bad_class_data_X[: self.num_samples_g1, :],
-            self.bad_class_data_X[self.num_samples_g1 :, :],
+            _rank_array(self.bad_class_data_X[: self.num_samples_g1, :]),
+            _rank_array(self.bad_class_data_X[self.num_samples_g1 :, :]),
         )
         self.assertLess(class_rate_disordered, 1.0)
 
@@ -445,8 +451,8 @@ class TestCraneMultiway(unittest.TestCase):
         (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=sum(cls.num_samples_similar),
             n_unordered_samples=0,
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
             noise_dist=None,
             noise_swaps=0.0,
@@ -458,8 +464,8 @@ class TestCraneMultiway(unittest.TestCase):
         (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=0,
             n_unordered_samples=sum(cls.num_samples_disimilar),
-            n_genes_ordered=0,
-            n_genes_unordered=cls.num_genes,
+            n_ordered_genes=0,
+            n_unordered_genes=cls.num_genes,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -483,8 +489,8 @@ class TestCraneMultiway(unittest.TestCase):
                 itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar)
             ),
             n_unordered_samples=0,
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
             noise_dist=norm(loc=0, scale=2),
             noise_swaps=None,
@@ -500,8 +506,8 @@ class TestCraneMultiway(unittest.TestCase):
             n_unordered_samples=sum(
                 itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar)
             ),
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,

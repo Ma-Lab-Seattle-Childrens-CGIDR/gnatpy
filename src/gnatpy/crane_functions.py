@@ -86,6 +86,7 @@ def crane_gene_set_classification(
         sample_groups=[sample_group1, sample_group2],
         gene_network=gene_network,
         rank_entropy_fun=_crane_classification_rate,  # type: ignore
+        rank_fun=_rank_array,
         kernel_density_estimate=kernel_density_estimate,
         bw_method=bw_method,
         iterations=iterations,
@@ -162,6 +163,7 @@ def crane_gene_set_entropy(
         sample_groups=[sample_group1, sample_group2],
         gene_network=gene_network,
         rank_entropy_fun=_crane_differential_entropy,  # type: ignore
+        rank_fun=_rank_array,
         kernel_density_estimate=kernel_density_estimate,
         bw_method=bw_method,
         iterations=iterations,
@@ -205,7 +207,7 @@ def _rank_centroid(
 
 def _rank_grouping_score(
     rank_array: Array2D, centroid: Optional[Array1D] = None
-) -> Array1D:
+) -> float:
     if centroid is None:
         centroid = _rank_centroid(rank_array)
     return _centroid_distances(rank_array, centroid).mean()
@@ -222,11 +224,11 @@ def _centroid_distances(
 
 
 def _crane_differential_entropy(
-    a: Array2D,
-    b: Array2D,
+    rank_array_a: Array2D,
+    rank_array_b: Array2D,
 ) -> float:
     return np.abs(
-        _rank_grouping_score(_rank_array(a)) - _rank_grouping_score(_rank_array(b))
+        _rank_grouping_score(rank_array_a) - _rank_grouping_score(rank_array_b)
     )
 
 
@@ -235,11 +237,7 @@ def _crane_differential_entropy(
 # region Classification rate functions
 
 
-def _crane_classification_rate(a: Array2D, b: Array2D) -> float:
-    # Compute the rank arrays
-    rank_array_a = _rank_array(a)
-    rank_array_b = _rank_array(b)
-
+def _crane_classification_rate(rank_array_a: Array2D, rank_array_b: Array2D) -> float:
     # Compute the rank centroids
     centroid_a = _rank_centroid(rank_array_a)
     centroid_b = _rank_centroid(rank_array_b)
@@ -264,7 +262,7 @@ def _crane_classification_rate(a: Array2D, b: Array2D) -> float:
     dist_diff_b = centroid_distance_a_array_b - centroid_distance_b_array_b
 
     # Calculate the accuracy
-    total_samples = a.shape[0] + b.shape[0]
+    total_samples = rank_array_a.shape[0] + rank_array_b.shape[0]
     correct_samples = (dist_diff_a < 0.0).sum() + (dist_diff_b >= 0.0).sum()
 
     return correct_samples / total_samples
@@ -340,6 +338,7 @@ def crane_multiway_classification(
         sample_groups=sample_groups,
         gene_network=gene_network,
         rank_entropy_fun=_crane_multiway,
+        rank_fun=_rank_array,
         kernel_density_estimate=kernel_density_estimate,
         bw_method=bw_method,
         iterations=iterations,
@@ -349,10 +348,9 @@ def crane_multiway_classification(
     )
 
 
-def _crane_multiway(*arrays: Array2D) -> float:
+def _crane_multiway(*rank_arrays: Array2D) -> float:
     # Combine the arrays and find the rank array
-    combined_array = np.vstack(arrays)
-    combined_rank_array = _rank_array(combined_array)
+    combined_rank_array = np.vstack(rank_arrays)
     # Find the combined mean
     combined_centroid = _rank_centroid(combined_rank_array)
 
@@ -361,7 +359,7 @@ def _crane_multiway(*arrays: Array2D) -> float:
     # Track the within group and between group centroid distances
     between_group_distance_sum = 0.0
     within_group_distance_sum = 0.0
-    for row_idx, a in enumerate(arrays):
+    for row_idx, a in enumerate(rank_arrays):
         ra = combined_rank_array[start_idx : (start_idx + a.shape[0])]
         start_idx += a.shape[0]
         # Get the centroid of the group

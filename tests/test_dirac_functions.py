@@ -211,7 +211,8 @@ class TestRankFunctions(unittest.TestCase):
         # Check that there is a difference between the rank conservation index of the two arrays
         self.assertGreater(
             dirac_functions._dirac_differential_entropy(
-                low_entropy_test_array, high_entropy_test_array
+                dirac_functions._rank_array(low_entropy_test_array),
+                dirac_functions._rank_array(high_entropy_test_array),
             ),
             0.0,
         )
@@ -229,8 +230,8 @@ class TestDiracGeneSetEntropy(unittest.TestCase):
         ) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=20,
             n_unordered_samples=15,
-            n_genes_ordered=20,
-            n_genes_unordered=25,
+            n_ordered_genes=20,
+            n_unordered_genes=25,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -266,8 +267,8 @@ class TestDiracGeneSetEntropy(unittest.TestCase):
         ) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=20,
             n_unordered_samples=15,
-            n_genes_ordered=20,
-            n_genes_unordered=25,
+            n_ordered_genes=20,
+            n_unordered_genes=25,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -314,8 +315,8 @@ class TestDiracGeneSetEntropy(unittest.TestCase):
         ) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=20,
             n_unordered_samples=15,
-            n_genes_ordered=20,
-            n_genes_unordered=25,
+            n_ordered_genes=20,
+            n_unordered_genes=25,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -342,8 +343,8 @@ class TestDiracClassification(unittest.TestCase):
         (test_expression_data1, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=cls.num_samples_g1,
             n_unordered_samples=0,
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -352,8 +353,8 @@ class TestDiracClassification(unittest.TestCase):
         (test_expression_data2, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=cls.num_samples_g2,
             n_unordered_samples=0,
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -368,8 +369,8 @@ class TestDiracClassification(unittest.TestCase):
         (test_expression_data1, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=0,
             n_unordered_samples=cls.num_samples_g1,
-            n_genes_ordered=0,
-            n_genes_unordered=cls.num_genes,
+            n_ordered_genes=0,
+            n_unordered_genes=cls.num_genes,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -378,8 +379,8 @@ class TestDiracClassification(unittest.TestCase):
         (test_expression_data2, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=0,
             n_unordered_samples=cls.num_samples_g2,
-            n_genes_ordered=0,
-            n_genes_unordered=cls.num_genes,
+            n_ordered_genes=0,
+            n_unordered_genes=cls.num_genes,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -392,14 +393,22 @@ class TestDiracClassification(unittest.TestCase):
 
     def test_dirac_classification_rate(self):
         class_rate_ordered = dirac_functions._dirac_classification_rate(
-            self.good_class_data_X[: self.num_samples_g1, :],
-            self.good_class_data_X[self.num_samples_g1 :, :],
+            dirac_functions._rank_array(
+                self.good_class_data_X[: self.num_samples_g1, :]
+            ),
+            dirac_functions._rank_array(
+                self.good_class_data_X[self.num_samples_g1 :, :],
+            ),
         )
         self.assertAlmostEqual(class_rate_ordered, 1.0)
 
         class_rate_disordered = dirac_functions._dirac_classification_rate(
-            self.bad_class_data_X[: self.num_samples_g1, :],
-            self.bad_class_data_X[self.num_samples_g1 :, :],
+            dirac_functions._rank_array(
+                self.bad_class_data_X[: self.num_samples_g1, :]
+            ),
+            dirac_functions._rank_array(
+                self.bad_class_data_X[self.num_samples_g1 :, :]
+            ),
         )
         self.assertLess(class_rate_disordered, 1.0)
 
@@ -555,11 +564,11 @@ class TestDiracMultiway(unittest.TestCase):
         (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=sum(cls.num_samples_similar),
             n_unordered_samples=0,
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
-            noise_dist= None,
-            noise_swaps= 0.0,
+            noise_dist=None,
+            noise_swaps=0.0,
             shuffle_genes=True,
             shuffle_samples=True,
             seed=1236871254,
@@ -568,8 +577,8 @@ class TestDiracMultiway(unittest.TestCase):
         (expr_arr, _, _, _, _) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=0,
             n_unordered_samples=sum(cls.num_samples_disimilar),
-            n_genes_ordered=0,
-            n_genes_unordered=cls.num_genes,
+            n_ordered_genes=0,
+            n_unordered_genes=cls.num_genes,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -593,8 +602,8 @@ class TestDiracMultiway(unittest.TestCase):
                 itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar)
             ),
             n_unordered_samples=0,
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
             noise_dist=norm(loc=0, scale=2),
             noise_swaps=None,
@@ -610,8 +619,8 @@ class TestDiracMultiway(unittest.TestCase):
             n_unordered_samples=sum(
                 itertools.chain(cls.num_samples_similar, cls.num_samples_disimilar)
             ),
-            n_genes_ordered=cls.num_genes,
-            n_genes_unordered=0,
+            n_ordered_genes=cls.num_genes,
+            n_unordered_genes=0,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,

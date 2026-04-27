@@ -2,12 +2,13 @@
 name = "gnatpy"
 description = "Analyze Rank Entropy in Python"
 authors = [{ name = "Braden Griebel", email = "bgriebel@uw.edu" }]
-version = "0.3.0"
+version = "0.4.0"
 readme = "README.md"
 keywords = ["entropy", "rank", "gene", "bioinformatics"]
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 dependencies = [
+  "anndata>=0.10.9",
   "joblib>=1.4.2",
   "numpy>=2.0.0",
   "pandas>=2.2.0",

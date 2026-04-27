@@ -49,8 +49,8 @@ class TestRaceGeneSetEntropy(unittest.TestCase):
         ) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=20,
             n_unordered_samples=15,
-            n_genes_ordered=20,
-            n_genes_unordered=25,
+            n_ordered_genes=20,
+            n_unordered_genes=25,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -88,8 +88,8 @@ class TestRaceGeneSetEntropy(unittest.TestCase):
         ) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=20,
             n_unordered_samples=15,
-            n_genes_ordered=20,
-            n_genes_unordered=25,
+            n_ordered_genes=20,
+            n_unordered_genes=25,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
@@ -139,8 +139,8 @@ class TestRaceGeneSetEntropy(unittest.TestCase):
         ) = _datagen._generate_rank_entropy_data(
             n_ordered_samples=20,
             n_unordered_samples=15,
-            n_genes_ordered=20,
-            n_genes_unordered=25,
+            n_ordered_genes=20,
+            n_unordered_genes=25,
             dist=norm(loc=100, scale=25),
             shuffle_genes=True,
             shuffle_samples=True,
