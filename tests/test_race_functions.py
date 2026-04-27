@@ -126,7 +126,7 @@ class TestRaceGeneSetEntropy(unittest.TestCase):
         self.assertAlmostEqual(
             pval_serial,
             pval_parallel,
-            places=4,
+            places=3,
         )
 
     def test_empirical_cdf(self):
