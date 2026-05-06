@@ -167,9 +167,6 @@ def _bootstrap_rank_entropy_p_value(
         pvalue = float(
             np.count_nonzero(rank_entropy_samples >= rank_entropy - gamma) + 1
         ) / float(iterations + 1)
-
-        empirical_cdf = ecdf(rank_entropy_samples)
-        pvalue = empirical_cdf.sf.evaluate(rank_entropy)[()]
         # End of code modified from SciPy
     else:
         kde = gaussian_kde(rank_entropy_samples, bw_method=bw_method)

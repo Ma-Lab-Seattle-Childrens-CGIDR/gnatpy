@@ -3,12 +3,20 @@
 <!--toc:start-->
 
 - [Changelog](#changelog)
+  - [Release 0.4.1](#release-041)
   - [Release 0.4.0](#release-040)
   - [Release 0.3.0](#release-030)
   - [Release 0.2.0](#release-020)
   - [Release 0.1.0](#release-010)
 
 <!--toc:end-->
+
+## Release 0.4.1
+
+- Allow use of wrapper methods from direct gnatpy import (e.g. available as
+  gnatpy.rank_entropy)
+- BUGFIX: Bootstrapped p-values were still using the empirical CDF from SciPy,
+  instead of the intended method of Phipson et al. This has now been corrected.
 
 ## Release 0.4.0
 
