@@ -12,7 +12,7 @@ import anndata as ad
 import joblib
 import numpy as np
 import pandas as pd
-from scipy.stats import gaussian_kde, ecdf
+from scipy.stats import gaussian_kde
 
 # Local Imports
 from gnatpy.gnatpy_types import Array1D, Array2D, EntropyFunction
