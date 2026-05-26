@@ -10,6 +10,7 @@ from typing import Callable, Hashable, Iterable, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 from scipy.stats import gaussian_kde
+from scipy import special
 
 # Local Imports
 from gnatpy._bootstrap_pvalue import (
@@ -212,6 +213,31 @@ def _rank_entropy(
     rank_array: Array2D, rank_template: Optional[Array1D] = None
 ) -> float:
     return _rank_mismatching_scores(rank_array, rank_template).mean()
+
+
+def _gene_contributions(in_array: Array2D) -> Array1D:
+    # Get the rank array, and rank template
+    rank_array = _rank_array(in_array)
+    rank_template = _rank_template(rank_array)
+    # Find the proportion of mismatches for each comparison
+    mismatch_prop = np.not_equal(rank_array, rank_template).mean(axis=1)
+
+    # Set up a numpy array of masks for which comparisons each gene is involved in
+    num_genes = in_array.shape[1]
+    comparison_mask_array = np.zeros(
+        (num_genes, special.comb(num_genes, 2, exact=True)), dtype=bool
+    )
+    counter = 0
+    for g1 in range(num_genes):
+        for g2 in range(g1 + 1, num_genes):
+            comparison_mask_array[g1, counter] = True
+            comparison_mask_array[g2, counter] = True
+            counter += 1
+    # Find the contribution of each gene
+    res_array = np.zeros((num_genes,))
+    for idx in range(num_genes):
+        res_array[idx] = mismatch_prop[comparison_mask_array[idx]].mean()
+    return res_array
 
 
 def _dirac_differential_entropy(rank_array_a: Array2D, rank_array_b: Array2D) -> float:
