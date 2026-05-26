@@ -18,7 +18,7 @@ from gnatpy.dirac_functions import _rank_array
 from gnatpy._bootstrap_pvalue import (
     _bootstrap_rank_entropy_p_value,
 )
-from gnatpy.gnatpy_types import Array2D
+from gnatpy.gnatpy_types import Array1D, Array2D
 
 
 # region Main Functions
@@ -108,6 +108,32 @@ def _pairwise_rank_entropy(rank_array: Array2D) -> float:
     # of 1's in each column
     freqs = np.mean(rank_array, axis=0)
     return cast(float, np.mean(special.entr(freqs) + special.entr(1 - freqs)))
+
+
+def _gene_contributions(in_array: Array2D) -> Array1D:
+    # Get the rank array
+    rank_array = _rank_array(in_array)
+    freqs = np.mean(rank_array, axis=0)
+    entropies = special.entr(freqs) + special.entr(1 - freqs)
+    # Set up a numpy array of masks for which comparisons each gene is involved in
+    num_genes = in_array.shape[1]
+    comparison_mask_array = np.zeros(
+        (num_genes, special.comb(num_genes, 2, exact=True)), dtype=bool
+    )
+    counter = 0
+    for g1 in range(num_genes):
+        for g2 in range(g1 + 1, num_genes):
+            comparison_mask_array[g1, counter] = True
+            comparison_mask_array[g2, counter] = True
+            counter += 1
+    # Find the contribution of each gene
+    res_array = np.zeros((num_genes,))
+    for idx in range(num_genes):
+        res_array[idx] = entropies[comparison_mask_array[idx]].mean()
+    # Each gene comparison is double counted, so divide by 2 so that the
+    # sum of the gene contributions adds up to the rank entropy (calculated
+    # via mismatches)
+    return res_array / 2.0
 
 
 def _infer_differential_entropy(rank_array_a: Array2D, rank_array_b: Array2D) -> float:

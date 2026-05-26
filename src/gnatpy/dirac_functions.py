@@ -237,7 +237,10 @@ def _gene_contributions(in_array: Array2D) -> Array1D:
     res_array = np.zeros((num_genes,))
     for idx in range(num_genes):
         res_array[idx] = mismatch_prop[comparison_mask_array[idx]].mean()
-    return res_array
+    # Each gene comparison is double counted, so divide by 2 so that the
+    # sum of the gene contributions adds up to the rank entropy (calculated
+    # via mismatches)
+    return res_array / 2.0
 
 
 def _dirac_differential_entropy(rank_array_a: Array2D, rank_array_b: Array2D) -> float:

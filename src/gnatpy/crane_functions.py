@@ -232,6 +232,22 @@ def _crane_differential_entropy(
     )
 
 
+def _gene_contributions(
+    in_array: Array2D,
+    method: Literal[
+        "average",
+        "min",
+        "max",
+        "dense",
+        "ordinal",
+    ] = "average",
+) -> Array1D:
+    # Get the rank array, and the rank centroid
+    rank_array = _rank_array(in_array, method=method)
+    # Use the standard deviation as the contribution
+    return np.std(rank_array, axis=0)
+
+
 # endregion Rank Centroid Functions
 
 # region Classification rate functions
