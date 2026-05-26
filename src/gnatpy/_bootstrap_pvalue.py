@@ -5,7 +5,7 @@
 # Imports
 # Standard Library Imports
 from __future__ import annotations
-from typing import Callable, Hashable, Iterable, Optional, Tuple, Union
+from typing import cast, Callable, Hashable, Iterable, Optional, Tuple, Union
 
 # External Imports
 import anndata as ad
@@ -85,43 +85,18 @@ def _bootstrap_rank_entropy_p_value(
         array, sample_group2 array), and the p-value found by
         bootstrapping
     """
-    # Begin by converting the expression data into the proper form
-    # Convert dataframe into numpy array
-    if isinstance(samples_array, pd.DataFrame):
-        # Convert sample groups of labels into integer positions
-        sample_group_indices = [
-            samples_array.index.get_indexer(s).ravel() for s in sample_groups
-        ]
-        sample_group_sizes = list(map(len, sample_group_indices))
-        # Filter the array for only the gene network
-        samples_array = samples_array.loc[:, gene_network]
-        # Get a numpy array from the dataframe
-        samples_array = samples_array.to_numpy()
-    elif isinstance(samples_array, ad.AnnData):
-        sample_arrays_list = []
-        sample_group_indices = []
-        sample_group_sizes = []
-        starting_idx = 0
-        for sg in sample_groups:
-            array = samples_array[sg, gene_network].to_df(layer=layer).to_numpy()
-            size = array.shape[0]
-            sample_arrays_list.append(array)
-            sample_group_sizes.append(size)
-            sample_group_indices.append(
-                np.array(range(starting_idx, starting_idx + size))
-            )
-            starting_idx += size
-        samples_array = np.concatenate(sample_arrays_list, axis=0)
-
-    else:
-        samples_array = np.array(samples_array)
-        sample_group_indices = [np.array(s).ravel() for s in sample_groups]
-        gene_network = np.array(gene_network)
-        sample_group_sizes = list(map(len, sample_group_indices))
-        # Filter the samples array for only the gene network of interest
-        samples_array = samples_array[:, gene_network]
-    # Combine sample group indices
-    sample_indices = np.concatenate(sample_group_indices)
+    (
+        samples_array,
+        gene_network,
+        sample_indices,
+        sample_group_indices,
+        sample_group_sizes,
+    ) = _extract_data(
+        samples_array=samples_array,
+        sample_groups=sample_groups,
+        gene_network=gene_network,
+        layer=layer,
+    )
     if rank_fun is None:
 
         def rank_fun(data: Array2D) -> Array2D:
@@ -175,6 +150,67 @@ def _bootstrap_rank_entropy_p_value(
 
 
 # endregion Main Function
+def _extract_data(
+    samples_array: Array2D | np.typing.ArrayLike | pd.DataFrame | ad.AnnData,
+    sample_groups: Iterable[Array1D] | Iterable[Iterable[Hashable]],
+    gene_network: Array1D | Iterable[Hashable],
+    layer: Optional[str] = None,
+) -> tuple[
+    Array2D,
+    Array1D,
+    Array1D,
+    list[Array1D],
+    list[int],
+]:
+    # Begin by converting the expression data into the proper form
+    # Convert dataframe into numpy array
+    if isinstance(samples_array, pd.DataFrame):
+        # Convert sample groups of labels into integer positions
+        sample_group_indices: list[Array1D] = [
+            samples_array.index.get_indexer(s).ravel() for s in sample_groups
+        ]
+        sample_group_sizes = list(map(len, sample_group_indices))
+        # Filter the array for only the gene network
+        samples_array: pd.DataFrame = samples_array.loc[:, gene_network]
+        # Get a numpy array from the dataframe
+        samples_array: Array2D = samples_array.to_numpy()
+    elif isinstance(samples_array, ad.AnnData):
+        sample_arrays_list: list[Array2D] = []
+        sample_group_indices: list[Array1D] = []
+        sample_group_sizes: list[int] = []
+        starting_idx = 0
+        for sg in sample_groups:
+            array: Array2D = (
+                samples_array[sg, gene_network].to_df(layer=layer).to_numpy()
+            )
+            size: int = array.shape[0]
+            sample_arrays_list.append(array)
+            sample_group_sizes.append(size)
+            sample_group_indices.append(
+                np.array(range(starting_idx, starting_idx + size))
+            )
+            starting_idx += size
+        samples_array: Array2D = np.concatenate(sample_arrays_list, axis=0)
+
+    else:
+        samples_array: Array2D = np.array(samples_array)
+        sample_group_indices: list[Array1D] = [
+            np.array(s).ravel() for s in sample_groups
+        ]
+        gene_network: Array1D = np.array(gene_network)
+        sample_group_sizes = list(map(len, sample_group_indices))
+        # Filter the samples array for only the gene network of interest
+        samples_array: Array2D = samples_array[:, gene_network]
+    # Combine sample group indices
+    sample_indices = np.concatenate(sample_group_indices)
+    samples_array = cast(Array2D, samples_array)
+    return (  # type: ignore
+        samples_array,
+        gene_network,
+        sample_indices,
+        sample_group_indices,
+        sample_group_sizes,
+    )
 
 
 def _pvalue_worker(
