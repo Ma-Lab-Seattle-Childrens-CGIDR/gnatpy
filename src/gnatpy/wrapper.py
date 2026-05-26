@@ -248,5 +248,5 @@ def _rank_entropy_worker(
             data[sample_group, gene_network].to_df(layer=layer).to_numpy()
         )
     else:
-        rank_entropy = rank_entropy_method(np.array(data))
+        rank_entropy = rank_entropy_method(np.array(data)[sample_group, gene_network])
     return sample_group_name, gene_network_name, rank_entropy
